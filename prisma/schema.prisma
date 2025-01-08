@@ -26,6 +26,7 @@ model User {
   workspaces    WorkspaceMember[]
   messages      Message[]
   reactions     Reaction[]
+  channels      ChannelMember[]
 }
 
 model Workspace {
