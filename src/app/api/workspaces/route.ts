@@ -1,46 +1,74 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { z } from "zod";
 
 import { db } from "@/lib/db";
+import { getCurrentUser } from "@/lib/current-user";
 
-export async function POST(
-  req: Request
-) {
+const createWorkspaceSchema = z.object({
+  name: z.string().min(1).max(32).regex(/^[a-zA-Z0-9-\s]+$/),
+  imageUrl: z.string().min(1)
+});
+
+export async function POST(req: Request) {
   try {
-    const authResult = await auth();
-    const userId = authResult.userId;
-    const { name, imageUrl } = await req.json();
+    const user = await getCurrentUser();
 
-    if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 });
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!name) {
-      return new NextResponse("Name is required", { status: 400 });
+    const body = await req.json();
+    const validatedData = createWorkspaceSchema.safeParse(body);
+
+    if (!validatedData.success) {
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
 
-    if (!imageUrl) {
-      return new NextResponse("Image URL is required", { status: 400 });
-    }
+    const { name, imageUrl } = validatedData.data;
 
     const workspace = await db.workspace.create({
       data: {
         name,
         imageUrl,
         members: {
-          create: [
-            {
-              userId,
-              role: "ADMIN"
+          create: {
+            userId: user.id,
+            role: "ADMIN"
+          }
+        },
+        channels: {
+          create: {
+            name: "general",
+            type: "PUBLIC",
+            description: "General discussion channel",
+            members: {
+              create: {
+                userId: user.id
+              }
             }
-          ]
+          }
+        }
+      },
+      include: {
+        members: {
+          include: {
+            user: true
+          }
+        },
+        channels: {
+          include: {
+            members: true
+          }
         }
       }
     });
 
     return NextResponse.json(workspace);
   } catch (error) {
-    console.log("[WORKSPACES_POST]", error);
-    return new NextResponse("Internal Error", { status: 500 });
+    console.error("[WORKSPACE_POST]", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
-} 
+}

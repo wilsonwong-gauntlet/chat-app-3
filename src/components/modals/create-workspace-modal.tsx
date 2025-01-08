@@ -3,7 +3,6 @@
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import axios from "axios";
 import { useRouter } from "next/navigation";
 
 import {
@@ -24,25 +23,27 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { FileUpload } from "@/components/file-upload";
 import { useModal } from "@/hooks/use-modal-store";
+import { FileUpload } from "@/components/file-upload";
 
 const formSchema = z.object({
   name: z.string().min(1, {
     message: "Workspace name is required."
+  }).max(32, {
+    message: "Workspace name cannot be longer than 32 characters."
+  }).regex(/^[a-zA-Z0-9-\s]+$/, {
+    message: "Workspace name can only contain letters, numbers, spaces, and hyphens."
   }),
   imageUrl: z.string().min(1, {
     message: "Workspace image is required."
   })
 });
 
-export const CreateWorkspaceModal = () => {
+export function CreateWorkspaceModal() {
   const { isOpen, onClose, type } = useModal();
   const router = useRouter();
 
-  const isModalOpen = isOpen && type === "createWorkspace";
-
-  const form = useForm({
+  const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
@@ -54,23 +55,39 @@ export const CreateWorkspaceModal = () => {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      const response = await axios.post("/api/workspaces", values);
+      const response = await fetch("/api/workspaces", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(values),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error);
+      }
+
       form.reset();
       router.refresh();
       onClose();
-      router.push(`/workspaces/${response.data.id}`);
+      router.push(`/workspaces/${data.id}`);
     } catch (error) {
-      console.log(error);
+      console.error(error);
+      form.setError("root", {
+        message: error instanceof Error ? error.message : "Something went wrong"
+      });
     }
-  }
+  };
 
   const handleClose = () => {
     form.reset();
     onClose();
-  }
+  };
 
   return (
-    <Dialog open={isModalOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen && type === "createWorkspace"} onOpenChange={handleClose}>
       <DialogContent className="bg-white text-black p-0 overflow-hidden">
         <DialogHeader className="pt-8 px-6">
           <DialogTitle className="text-2xl text-center font-bold">
@@ -96,6 +113,7 @@ export const CreateWorkspaceModal = () => {
                           onChange={field.onChange}
                         />
                       </FormControl>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -106,9 +124,7 @@ export const CreateWorkspaceModal = () => {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel
-                      className="uppercase text-xs font-bold text-zinc-500 dark:text-secondary/70"
-                    >
+                    <FormLabel className="uppercase text-xs font-bold text-zinc-500 dark:text-secondary/70">
                       Workspace name
                     </FormLabel>
                     <FormControl>
@@ -124,14 +140,19 @@ export const CreateWorkspaceModal = () => {
                 )}
               />
             </div>
+            {form.formState.errors.root && (
+              <div className="px-6 text-red-500 text-sm">
+                {form.formState.errors.root.message}
+              </div>
+            )}
             <DialogFooter className="bg-gray-100 px-6 py-4">
-              <Button variant="default" disabled={isLoading}>
-                Create
+              <Button type="submit" variant="default" disabled={isLoading}>
+                {isLoading ? "Creating..." : "Create Workspace"}
               </Button>
             </DialogFooter>
           </form>
         </Form>
       </DialogContent>
     </Dialog>
-  )
+  );
 } 
