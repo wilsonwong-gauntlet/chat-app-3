@@ -1,0 +1,140 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  clerkId       String    @unique // External auth ID from Clerk
+  email         String    @unique
+  name          String
+  imageUrl      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relationships
+  workspaces    WorkspaceMember[]
+  messages      Message[]
+  reactions     Reaction[]
+}
+
+model Workspace {
+  id            String    @id @default(cuid())
+  name          String
+  imageUrl      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relationships
+  members       WorkspaceMember[]
+  channels      Channel[]
+}
+
+model WorkspaceMember {
+  id            String    @id @default(cuid())
+  role          Role      @default(MEMBER)
+  userId        String
+  workspaceId   String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relationships
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+  @@index([workspaceId])
+}
+
+model Channel {
+  id            String    @id @default(cuid())
+  name          String
+  description   String?
+  type          ChannelType @default(PUBLIC)
+  workspaceId   String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relationships
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  members       ChannelMember[]
+  messages      Message[]
+
+  @@unique([name, workspaceId])
+  @@index([workspaceId])
+}
+
+model ChannelMember {
+  id            String    @id @default(cuid())
+  channelId     String
+  userId        String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relationships
+  channel       Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, channelId])
+  @@index([channelId])
+}
+
+model Message {
+  id            String    @id @default(cuid())
+  content       String
+  fileUrl       String?
+  channelId     String
+  userId        String
+  parentId      String?   // For thread replies
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relationships
+  channel       Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent        Message?  @relation("ThreadReplies", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies       Message[] @relation("ThreadReplies")
+  reactions     Reaction[]
+
+  @@index([channelId])
+  @@index([userId])
+  @@index([parentId])
+}
+
+model Reaction {
+  id            String    @id @default(cuid())
+  emoji         String
+  messageId     String
+  userId        String
+  createdAt     DateTime  @default(now())
+
+  // Relationships
+  message       Message   @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+  @@index([userId])
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+  GUEST
+}
+
+enum ChannelType {
+  PUBLIC
+  PRIVATE
+  DIRECT
+}
