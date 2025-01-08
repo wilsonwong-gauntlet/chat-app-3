@@ -2,7 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
-import { EmptyWorkspaceClient } from "@/components/empty-workspace-client";
+import EmptyWorkspaceClient from "@/components/empty-workspace-client";
 
 export default async function WorkspacesPage() {
   const { userId } = await auth();

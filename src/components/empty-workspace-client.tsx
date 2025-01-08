@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { useModal } from "@/hooks/use-modal-store";
 
-export function EmptyWorkspaceClient() {
+const EmptyWorkspaceClient = () => {
   const { onOpen } = useModal();
 
   return (
@@ -20,4 +20,6 @@ export function EmptyWorkspaceClient() {
       </div>
     </div>
   );
-} 
+}
+
+export default EmptyWorkspaceClient; 

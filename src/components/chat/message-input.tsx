@@ -1,72 +1,76 @@
-import { useRef, useState } from "react";
+"use client";
+
+import { useState } from "react";
+import { useParams } from "next/navigation";
+
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { PaperclipIcon, SendIcon } from "lucide-react";
-import { FileUpload } from "@/components/file-upload";
 
 interface MessageInputProps {
-  channelId: string;
-  onSend: (content: string, fileUrl?: string) => void;
+  apiUrl: string;
+  query: Record<string, any>;
+  name: string;
+  type: "conversation" | "channel";
 }
 
-export function MessageInput({ channelId, onSend }: MessageInputProps) {
+export const MessageInput = ({
+  apiUrl,
+  query,
+  name,
+  type
+}: MessageInputProps) => {
   const [content, setContent] = useState("");
-  const [isUploading, setIsUploading] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const params = useParams();
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
+  const onSubmit = async () => {
+    if (!content.trim()) return;
+
+    try {
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          content,
+          ...query,
+        })
+      });
+
+      if (response.ok) {
+        setContent("");
+      }
+    } catch (error) {
+      console.error(error);
     }
-  };
-
-  const handleSend = () => {
-    if (!content.trim() && !isUploading) return;
-    onSend(content);
-    setContent("");
-    textareaRef.current?.focus();
-  };
+  }
 
   return (
-    <div className="flex items-end space-x-2">
-      <div className="flex-1">
-        <Textarea
-          ref={textareaRef}
+    <div className="p-4 bg-white dark:bg-[#1E1F22]">
+      <div className="relative">
+        <Input
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          onKeyDown={handleKeyPress}
-          placeholder="Type a message..."
-          className="min-h-[60px] resize-none"
-          rows={1}
-        />
-      </div>
-      <div className="flex space-x-2">
-        <FileUpload
-          endpoint="messageFile"
-          onChange={(url) => {
-            if (url) {
-              onSend("", url);
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              onSubmit();
             }
           }}
-        >
+          placeholder={`Message ${type === "conversation" ? name : "#" + name}`}
+          className="px-14 py-6 bg-zinc-200/90 dark:bg-zinc-700/75 border-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-zinc-600 dark:text-zinc-200"
+        />
+        <div className="absolute top-[50%] right-4 -translate-y-[50%]">
           <Button
-            size="icon"
-            variant="ghost"
-            className="h-[60px]"
-            disabled={isUploading}
+            type="submit"
+            disabled={!content.trim()}
+            onClick={onSubmit}
+            size="sm"
+            variant="default"
           >
-            <PaperclipIcon className="h-5 w-5" />
+            Send
           </Button>
-        </FileUpload>
-        <Button
-          size="icon"
-          className="h-[60px]"
-          onClick={handleSend}
-          disabled={!content.trim() && !isUploading}
-        >
-          <SendIcon className="h-5 w-5" />
-        </Button>
+        </div>
       </div>
     </div>
   );

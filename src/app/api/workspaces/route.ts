@@ -5,8 +5,13 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/current-user";
 
 const createWorkspaceSchema = z.object({
-  name: z.string().min(1).max(32).regex(/^[a-zA-Z0-9-\s]+$/),
-  imageUrl: z.string().min(1)
+  name: z.string().min(1, {
+    message: "Workspace name is required."
+  }).max(32, {
+    message: "Workspace name cannot be longer than 32 characters."
+  }).regex(/^[a-zA-Z0-9-\s]+$/, {
+    message: "Workspace name can only contain letters, numbers, spaces, and hyphens."
+  })
 });
 
 export async function POST(req: Request) {
@@ -24,12 +29,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
 
-    const { name, imageUrl } = validatedData.data;
+    const { name } = validatedData.data;
 
     const workspace = await db.workspace.create({
       data: {
         name,
-        imageUrl,
         members: {
           create: {
             userId: user.id,

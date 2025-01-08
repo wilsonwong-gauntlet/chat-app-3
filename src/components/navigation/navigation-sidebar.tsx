@@ -1,51 +1,39 @@
-import { UserButton } from "@clerk/nextjs";
+"use client";
 
-import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import WorkspaceItem from "./workspace-item";
-import { NavigationAction } from "./navigation-action";
-import { db } from "@/lib/db";
+import { Plus } from "lucide-react";
+import { useModal } from "@/hooks/use-modal-store";
+
+import { WorkspaceItem } from "./workspace-item";
+import { Button } from "@/components/ui/button";
 
 interface NavigationSidebarProps {
-  userId: string;
+  workspaces: {
+    id: string;
+    name: string;
+  }[];
 }
 
-export default async function NavigationSidebar({
-  userId
-}: NavigationSidebarProps) {
-  const workspaces = await db.workspace.findMany({
-    where: {
-      members: {
-        some: {
-          userId: userId
-        }
-      }
-    }
-  });
+export const NavigationSidebar = ({
+  workspaces
+}: NavigationSidebarProps) => {
+  const { onOpen } = useModal();
 
   return (
     <div className="space-y-4 flex flex-col items-center h-full text-primary w-full dark:bg-[#1E1F22] bg-[#E3E5E8] py-3">
-      <UserButton
-        afterSignOutUrl="/"
-        appearance={{
-          elements: {
-            avatarBox: "h-[48px] w-[48px]"
-          }
-        }}
-      />
-      <Separator className="h-[2px] bg-zinc-300 dark:bg-zinc-700 rounded-md w-10 mx-auto" />
-      <ScrollArea className="flex-1 w-full">
-        {workspaces.map((workspace) => (
-          <div key={workspace.id} className="mb-4">
-            <WorkspaceItem
-              id={workspace.id}
-              name={workspace.name}
-              imageUrl={workspace.imageUrl}
-            />
-          </div>
-        ))}
-      </ScrollArea>
-      <NavigationAction />
+      <Button
+        onClick={() => onOpen("createWorkspace")}
+        className="h-12 w-12"
+        variant="outline"
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
+      {workspaces.map((workspace) => (
+        <WorkspaceItem
+          key={workspace.id}
+          id={workspace.id}
+          name={workspace.name}
+        />
+      ))}
     </div>
   );
 } 
