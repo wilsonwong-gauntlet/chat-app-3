@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 
 import { db } from "@/lib/db";
+import { WorkspaceSidebar } from "@/components/workspace/workspace-sidebar";
 
 async function getWorkspace(workspaceId: string, userId: string) {
   const workspace = await db.workspace.findUnique({
@@ -51,7 +52,9 @@ export default async function WorkspaceLayout({
 
   return (
     <div className="h-full">
-      {/* Workspace navigation will go here */}
+      <div className="hidden md:flex h-full w-60 z-20 flex-col fixed inset-y-0 md:pl-[72px]">
+        <WorkspaceSidebar workspaceId={params.workspaceId} />
+      </div>
       <main className="h-full md:pl-60">
         {children}
       </main>

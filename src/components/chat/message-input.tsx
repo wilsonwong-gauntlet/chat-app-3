@@ -1,77 +1,67 @@
 "use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { SendHorizontal } from "lucide-react";
 
 interface MessageInputProps {
-  apiUrl: string;
-  query: Record<string, any>;
-  name: string;
-  type: "conversation" | "channel";
+  channelId: string;
 }
 
-export const MessageInput = ({
-  apiUrl,
-  query,
-  name,
-  type
-}: MessageInputProps) => {
+export function MessageInput({
+  channelId
+}: MessageInputProps) {
   const [content, setContent] = useState("");
-  const params = useParams();
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
-  const onSubmit = async () => {
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     if (!content.trim()) return;
 
     try {
-      const response = await fetch(apiUrl, {
+      setIsLoading(true);
+      const response = await fetch(`/api/channels/${channelId}/messages`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          content,
-          ...query,
-        })
+        body: JSON.stringify({ content })
       });
 
-      if (response.ok) {
-        setContent("");
+      if (!response.ok) {
+        throw new Error("Failed to send message");
       }
+
+      setContent("");
+      router.refresh();
     } catch (error) {
       console.error(error);
+    } finally {
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="p-4 bg-white dark:bg-[#1E1F22]">
-      <div className="relative">
-        <Input
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              onSubmit();
-            }
-          }}
-          placeholder={`Message ${type === "conversation" ? name : "#" + name}`}
-          className="px-14 py-6 bg-zinc-200/90 dark:bg-zinc-700/75 border-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-zinc-600 dark:text-zinc-200"
-        />
-        <div className="absolute top-[50%] right-4 -translate-y-[50%]">
-          <Button
-            type="submit"
-            disabled={!content.trim()}
-            onClick={onSubmit}
-            size="sm"
-            variant="default"
-          >
-            Send
-          </Button>
-        </div>
-      </div>
-    </div>
+    <form onSubmit={onSubmit} className="flex items-center gap-x-2">
+      <Textarea
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        placeholder="Type a message..."
+        className="resize-none"
+        rows={1}
+        disabled={isLoading}
+      />
+      <Button
+        type="submit"
+        disabled={isLoading || !content.trim()}
+        size="icon"
+      >
+        <SendHorizontal className="h-4 w-4" />
+      </Button>
+    </form>
   );
 } 

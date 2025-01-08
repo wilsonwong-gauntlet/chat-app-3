@@ -2,75 +2,84 @@ import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 
 import { db } from "@/lib/db";
-import { ChatContainer } from "@/components/chat/chat-container";
+import { MessageInput } from "@/components/chat/message-input";
 
-interface ChannelPageProps {
-  params: {
-    workspaceId: string;
-    channelId: string;
-  };
+async function getChannel(channelId: string, userId: string) {
+  const channel = await db.channel.findUnique({
+    where: {
+      id: channelId,
+      OR: [
+        {
+          type: "PUBLIC"
+        },
+        {
+          members: {
+            some: {
+              user: {
+                clerkId: userId
+              }
+            }
+          }
+        }
+      ]
+    },
+    include: {
+      messages: {
+        orderBy: {
+          createdAt: "asc"
+        },
+        take: 50,
+        include: {
+          user: true
+        }
+      }
+    }
+  });
+
+  return channel;
 }
 
-export default async function ChannelPage({ params }: ChannelPageProps) {
+export default async function ChannelPage({
+  params
+}: {
+  params: { channelId: string }
+}) {
   const { userId } = await auth();
 
   if (!userId) {
     redirect("/sign-in");
   }
 
-  const channel = await db.channel.findUnique({
-    where: {
-      id: params.channelId,
-      workspace: {
-        id: params.workspaceId,
-        members: {
-          some: {
-            userId
-          }
-        }
-      }
-    },
-    include: {
-      workspace: true
-    }
-  });
+  const channel = await getChannel(params.channelId, userId);
 
   if (!channel) {
-    return redirect("/");
+    redirect("/workspaces");
   }
-
-  const messages = await db.message.findMany({
-    where: {
-      channelId: params.channelId,
-      parentId: null // Only get top-level messages
-    },
-    include: {
-      user: true,
-      reactions: true
-    },
-    orderBy: {
-      createdAt: "desc"
-    },
-    take: 50
-  });
 
   return (
     <div className="flex flex-col h-full">
-      <ChatContainer
-        channelId={params.channelId}
-        messages={messages}
-        onSendMessage={async (content: string, fileUrl?: string) => {
-          "use server";
-          await db.message.create({
-            data: {
-              content,
-              fileUrl,
-              channelId: params.channelId,
-              userId
-            }
-          });
-        }}
-      />
+      <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+        {channel.messages.map((message) => (
+          <div key={message.id} className="flex items-start gap-x-3">
+            <div className="flex flex-col">
+              <div className="flex items-center gap-x-2">
+                <p className="font-semibold text-sm">
+                  {message.user.name}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(message.createdAt).toLocaleString()}
+                </p>
+              </div>
+              <p className="text-sm">
+                {message.content}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="p-4 border-t">
+        <MessageInput channelId={params.channelId} />
+      </div>
     </div>
   );
 } 

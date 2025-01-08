@@ -29,47 +29,42 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
 
-    const { name } = validatedData.data;
-
-    const workspace = await db.workspace.create({
-      data: {
-        name,
-        members: {
-          create: {
-            userId: user.id,
-            role: "ADMIN"
-          }
-        },
-        channels: {
-          create: {
-            name: "general",
-            type: "PUBLIC",
-            description: "General discussion channel",
-            members: {
-              create: {
-                userId: user.id
-              }
+    // Create workspace with general channel in a transaction
+    const workspace = await db.$transaction(async (tx) => {
+      // Create the workspace
+      const workspace = await tx.workspace.create({
+        data: {
+          name: validatedData.data.name,
+          members: {
+            create: {
+              userId: user.id,
+              role: "ADMIN"
             }
           }
         }
-      },
-      include: {
-        members: {
-          include: {
-            user: true
-          }
-        },
-        channels: {
-          include: {
-            members: true
+      });
+
+      // Create the general channel
+      await tx.channel.create({
+        data: {
+          name: "general",
+          description: "General discussion channel",
+          workspaceId: workspace.id,
+          type: "PUBLIC",
+          members: {
+            create: {
+              userId: user.id
+            }
           }
         }
-      }
+      });
+
+      return workspace;
     });
 
     return NextResponse.json(workspace);
   } catch (error) {
-    console.error("[WORKSPACE_POST]", error);
+    console.error("[WORKSPACES_POST]", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
