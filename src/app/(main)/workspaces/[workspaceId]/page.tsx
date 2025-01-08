@@ -30,11 +30,9 @@ async function getWorkspace(workspaceId: string, userId: string) {
   return workspace;
 }
 
-export default async function WorkspaceLayout({
-  children,
+export default async function WorkspacePage({
   params
 }: {
-  children: React.ReactNode;
   params: { workspaceId: string }
 }) {
   const { userId } = await auth();
@@ -50,11 +48,13 @@ export default async function WorkspaceLayout({
   }
 
   return (
-    <div className="h-full">
-      {/* Workspace navigation will go here */}
-      <main className="h-full md:pl-60">
-        {children}
-      </main>
+    <div className="h-full p-4">
+      <h1 className="text-2xl font-bold mb-4">
+        Welcome to {workspace.name}
+      </h1>
+      <p className="text-muted-foreground">
+        Select a channel to start chatting
+      </p>
     </div>
   );
 } 
