@@ -5,7 +5,7 @@ import { useModal } from "@/hooks/use-modal-store";
 
 export default function WorkspacesPage() {
   const { onOpen } = useModal();
-  
+
   return (
     <div className="flex flex-col items-center justify-center h-full">
       <div className="max-w-md text-center px-4">

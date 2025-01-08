@@ -1,18 +1,13 @@
-import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
-import NavigationSidebar from "@/components/navigation/navigation-sidebar";
-import ServerSidebar from "@/components/server/server-sidebar";
-import { cn } from "@/lib/utils";
+import { redirect } from "next/navigation";
 
-interface MainLayoutProps {
-  children: React.ReactNode;
-  params: { workspaceId: string };
-}
+import NavigationSidebar from "@/components/navigation/navigation-sidebar";
 
 export default async function MainLayout({
   children,
-  params
-}: MainLayoutProps) {
+}: {
+  children: React.ReactNode;
+}) {
   const { userId } = await auth();
 
   if (!userId) {
@@ -24,21 +19,9 @@ export default async function MainLayout({
       <div className="hidden md:flex h-full w-[72px] z-30 flex-col fixed inset-y-0">
         <NavigationSidebar />
       </div>
-      <div className="md:pl-[72px] h-full">
-        <div className="h-full flex">
-          {params.workspaceId && (
-            <div className="hidden md:flex h-full w-60 z-20 flex-col fixed inset-y-0 md:pl-[72px]">
-              <ServerSidebar workspaceId={params.workspaceId} />
-            </div>
-          )}
-          <main className={cn(
-            "h-full w-full",
-            params.workspaceId && "md:pl-60"
-          )}>
-            {children}
-          </main>
-        </div>
-      </div>
+      <main className="md:pl-[72px] h-full">
+        {children}
+      </main>
     </div>
   );
-}
+} 
