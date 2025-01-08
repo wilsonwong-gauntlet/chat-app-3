@@ -1,25 +1,23 @@
 import { UserButton } from "@clerk/nextjs";
-import { redirect } from "next/navigation";
 
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import WorkspaceItem from "./workspace-item";
 import { NavigationAction } from "./navigation-action";
-import { currentProfile } from "@/lib/current-profile";
 import { db } from "@/lib/db";
 
-export default async function NavigationSidebar() {
-  const profile = await currentProfile();
+interface NavigationSidebarProps {
+  userId: string;
+}
 
-  if (!profile) {
-    return redirect("/sign-in");
-  }
-
+export default async function NavigationSidebar({
+  userId
+}: NavigationSidebarProps) {
   const workspaces = await db.workspace.findMany({
     where: {
       members: {
         some: {
-          userId: profile.id
+          userId: userId
         }
       }
     }

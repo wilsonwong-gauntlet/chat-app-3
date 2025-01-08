@@ -1,23 +1,33 @@
-"use client";
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
-import { useModal } from "@/hooks/use-modal-store";
+import { db } from "@/lib/db";
+import { EmptyWorkspaceClient } from "@/components/empty-workspace-client";
 
-export default function WorkspacesPage() {
-  const { onOpen } = useModal();
+export default async function WorkspacesPage() {
+  const { userId } = await auth();
 
-  return (
-    <div className="flex flex-col items-center justify-center h-full">
-      <div className="max-w-md text-center px-4">
-        <h2 className="text-2xl font-bold mb-4">Welcome to Slack Clone</h2>
-        <p className="text-slate-500 mb-8">Get started by creating or joining a workspace</p>
-        <Button
-          size="lg"
-          onClick={() => onOpen("createWorkspace")}
-        >
-          Create a Workspace
-        </Button>
-      </div>
-    </div>
-  );
+  if (!userId) {
+    redirect("/sign-in");
+  }
+
+  // Check if user has any workspaces
+  const workspaces = await db.workspace.findMany({
+    where: {
+      members: {
+        some: {
+          userId: userId
+        }
+      }
+    },
+    take: 1
+  });
+
+  // If user has workspaces, redirect to the first one
+  if (workspaces.length > 0) {
+    redirect(`/workspaces/${workspaces[0].id}`);
+  }
+
+  // If no workspaces, show empty state
+  return <EmptyWorkspaceClient />;
 } 

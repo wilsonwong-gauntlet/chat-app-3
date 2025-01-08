@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
+import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 
 import { ThemeProvider } from "@/providers/theme-provider";
 import { ModalProvider } from "@/providers/modal-provider";
@@ -36,8 +36,13 @@ export default function RootLayout({
             enableSystem={false}
             storageKey="slack-theme"
           >
-            <ModalProvider />
-            {children}
+            <SignedOut>
+              <SignInButton mode="modal" />
+            </SignedOut>
+            <SignedIn>
+              <ModalProvider />
+              {children}
+            </SignedIn>
           </ThemeProvider>
         </body>
       </html>
