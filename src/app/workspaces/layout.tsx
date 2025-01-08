@@ -1,22 +1,43 @@
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
+
 import NavigationSidebar from "@/components/navigation/navigation-sidebar";
 import ServerSidebar from "@/components/server/server-sidebar";
 import { cn } from "@/lib/utils";
+import { db } from "@/lib/db";
 
-interface MainLayoutProps {
+interface WorkspacesLayoutProps {
   children: React.ReactNode;
   params: { workspaceId: string };
 }
 
-export default async function MainLayout({
+export default async function WorkspacesLayout({
   children,
   params
-}: MainLayoutProps) {
+}: WorkspacesLayoutProps) {
   const { userId } = await auth();
 
   if (!userId) {
-    redirect("/sign-in");
+    return null;
+  }
+
+  // If we're at /workspaces root, check if user has any workspaces
+  if (!params.workspaceId) {
+    const workspaces = await db.workspace.findMany({
+      where: {
+        members: {
+          some: {
+            userId
+          }
+        }
+      },
+      take: 1
+    });
+
+    // If user has workspaces, redirect to the first one
+    if (workspaces.length > 0) {
+      redirect(`/workspaces/${workspaces[0].id}`);
+    }
   }
 
   return (
@@ -41,4 +62,4 @@ export default async function MainLayout({
       </div>
     </div>
   );
-}
+} 

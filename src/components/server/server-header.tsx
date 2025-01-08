@@ -1,3 +1,5 @@
+"use client";
+
 import { ChevronDown, Settings } from "lucide-react";
 
 import {
