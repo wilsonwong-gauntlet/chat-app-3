@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { MessageWithUser } from "@/types";
 import { Markdown } from "@/components/markdown";
+import { MessageReactions } from "@/components/message-reactions";
 
 interface MessageItemProps {
   message: MessageWithUser;
@@ -135,7 +136,11 @@ export function MessageItem({
               content={message.content} 
               className="text-sm break-words"
             />
-            {replyCount > 0 && !isThread && (
+            <MessageReactions
+              messageId={message.id}
+              channelId={message.channelId}
+            />
+            {hasReplies && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
