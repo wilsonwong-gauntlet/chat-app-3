@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { WorkspaceNameForm } from "@/components/workspace/workspace-name-form";
 import { AddMemberForm } from "@/components/workspace/add-member-form";
+import { MemberOptions } from "@/components/workspace/member-options";
 
 async function getWorkspace(workspaceId: string, userId: string) {
   const workspace = await db.workspace.findUnique({
@@ -95,9 +96,17 @@ export default async function WorkspaceSettingsPage({
                           <p className="text-xs text-zinc-500">{member.user.email}</p>
                         </div>
                       </div>
-                      <span className="text-xs font-medium px-2 py-1 rounded-full bg-zinc-200 dark:bg-zinc-700">
-                        {member.role}
-                      </span>
+                      <div className="flex items-center gap-x-2">
+                        <span className="text-xs font-medium px-2 py-1 rounded-full bg-zinc-200 dark:bg-zinc-700">
+                          {member.role}
+                        </span>
+                        <MemberOptions
+                          workspaceId={workspace.id}
+                          memberId={member.id}
+                          memberRole={member.role}
+                          isCurrentUser={member.user.clerkId === userId}
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
