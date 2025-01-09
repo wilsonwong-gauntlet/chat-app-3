@@ -61,7 +61,7 @@ export function WorkspaceSidebar() {
               <Plus className="h-4 w-4" />
             </Button>
           </div>
-          <MemberList />
+          <MemberList workspace={workspace} />
         </div>
       </ScrollArea>
     </div>
