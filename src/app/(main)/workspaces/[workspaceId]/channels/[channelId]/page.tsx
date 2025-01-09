@@ -2,62 +2,70 @@ import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 
 import { db } from "@/lib/db";
-import { MessageList } from "@/components/chat/message-list";
-import { MessageInput } from "@/components/chat/message-input";
 
 async function getChannel(channelId: string, userId: string) {
+  // First get the database user
+  const dbUser = await db.user.findUnique({
+    where: { clerkId: userId }
+  });
+
+  if (!dbUser) {
+    return null;
+  }
+
   const channel = await db.channel.findUnique({
     where: {
       id: channelId,
-      OR: [
-        {
-          type: "PUBLIC"
-        },
-        {
+    },
+    include: {
+      workspace: {
+        include: {
           members: {
-            some: {
-              user: {
-                clerkId: userId
-              }
+            where: {
+              userId: dbUser.id
             }
           }
         }
-      ]
-    },
-    include: {
-      messages: {
-        where: {
-          parentId: null // Only fetch top-level messages
-        },
+      },
+      members: {
         include: {
-          user: true,
-          channel: true,
-          _count: {
+          user: {
             select: {
-              replies: true
+              id: true,
+              name: true,
+              imageUrl: true
             }
           }
-        },
-        orderBy: {
-          createdAt: "asc"
         }
       }
     }
   });
 
-  return channel;
-}
-
-interface ChannelPageProps {
-  params: {
-    workspaceId: string;
-    channelId: string;
+  if (!channel) {
+    return null;
   }
+
+  // Check if user is a member of the workspace
+  if (channel.workspace.members.length === 0) {
+    return null;
+  }
+
+  // For private channels, check if user is a member
+  if (channel.type === "PRIVATE") {
+    const isMember = channel.members.some(member => member.userId === dbUser.id);
+    if (!isMember) {
+      return null;
+    }
+  }
+
+  return channel;
 }
 
 export default async function ChannelPage({
   params
-}: ChannelPageProps) {
+}: {
+  params: { channelId: string }
+}) {
   const { userId } = await auth();
 
   if (!userId) {
@@ -72,14 +80,21 @@ export default async function ChannelPage({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1">
-        <MessageList
-          channelId={channel.id}
-          initialMessages={channel.messages}
-        />
+      <div className="px-3 h-12 flex items-center border-b">
+        <h2 className="text-md font-semibold flex items-center">
+          {channel.type === "PRIVATE" ? (
+            <span className="text-sm text-zinc-500 mr-2">🔒</span>
+          ) : (
+            <span className="text-sm text-zinc-500 mr-2">#</span>
+          )}
+          {channel.name}
+        </h2>
       </div>
-      <div className="p-4 border-t dark:border-zinc-700">
-        <MessageInput channelId={channel.id} />
+      <div className="flex-1 p-4">
+        {channel.description && (
+          <p className="text-sm text-zinc-500 mb-4">{channel.description}</p>
+        )}
+        {/* Message list will go here */}
       </div>
     </div>
   );

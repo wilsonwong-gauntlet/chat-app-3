@@ -24,7 +24,7 @@ export function WorkspaceSidebar() {
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold">{workspace.name}</h2>
           <Button
-            onClick={() => onOpen("workspaceSettings")}
+            onClick={() => onOpen("workspaceSettings", { workspaceId: workspace.id })}
             size="icon"
             variant="ghost"
             className="h-6 w-6 text-zinc-400 hover:text-white"
@@ -38,7 +38,7 @@ export function WorkspaceSidebar() {
           <div className="flex items-center justify-between py-2">
             <h3 className="text-sm font-semibold text-zinc-400">Channels</h3>
             <Button
-              onClick={() => onOpen("createChannel")}
+              onClick={() => onOpen("createChannel", { workspaceId: workspace.id })}
               size="icon"
               variant="ghost"
               className="h-6 w-6 text-zinc-400 hover:text-white"
@@ -53,7 +53,7 @@ export function WorkspaceSidebar() {
           <div className="flex items-center justify-between py-2">
             <h3 className="text-sm font-semibold text-zinc-400">Members</h3>
             <Button
-              onClick={() => onOpen("inviteMembers")}
+              onClick={() => onOpen("inviteMembers", { workspaceId: workspace.id })}
               size="icon"
               variant="ghost"
               className="h-6 w-6 text-zinc-400 hover:text-white"

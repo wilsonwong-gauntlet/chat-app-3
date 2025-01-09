@@ -3,21 +3,10 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Hash, Lock } from "lucide-react";
-import { Channel } from "@prisma/client";
 
 import { useWorkspace } from "@/providers/workspace-provider";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-interface ChannelWithMembers extends Channel {
-  members: {
-    user: {
-      id: string;
-      name: string;
-      imageUrl: string | null;
-    }
-  }[];
-}
 
 export function ChannelList() {
   const { workspace } = useWorkspace();
@@ -27,7 +16,7 @@ export function ChannelList() {
 
   return (
     <div className="space-y-[2px]">
-      {workspace.channels.map((channel: ChannelWithMembers) => {
+      {workspace.channels.map((channel) => {
         const isActive = params?.channelId === channel.id;
 
         return (
