@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type ModalType = "createWorkspace";
+export type ModalType = "createWorkspace" | "workspaceSettings" | "inviteMembers" | "createChannel";
 
 interface ModalStore {
   type: ModalType | null;

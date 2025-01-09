@@ -1,69 +1,93 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
+import { auth } from "@clerk/nextjs/server";
 
 import { db } from "@/lib/db";
-import { getCurrentUser } from "@/lib/current-user";
 
-const updateWorkspaceSchema = z.object({
-  name: z.string().min(1, {
-    message: "Workspace name is required."
-  }).max(32, {
-    message: "Workspace name cannot be longer than 32 characters."
-  }).regex(/^[a-zA-Z0-9-\s]+$/, {
-    message: "Workspace name can only contain letters, numbers, spaces, and hyphens."
-  })
-});
-
-export async function PATCH(
+export async function GET(
   req: Request,
   { params }: { params: { workspaceId: string } }
 ) {
   try {
-    const user = await getCurrentUser();
+    const { userId } = await auth();
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!userId) {
+      return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const body = await req.json();
-    const validatedData = updateWorkspaceSchema.safeParse(body);
+    const dbUser = await db.user.findUnique({
+      where: { clerkId: userId }
+    });
 
-    if (!validatedData.success) {
-      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    if (!dbUser) {
+      return new NextResponse("User not found", { status: 404 });
     }
 
-    // Check if user is admin of the workspace
-    const workspace = await db.workspace.findFirst({
+    // Check if user is a member of the workspace
+    const workspaceMember = await db.workspaceMember.findFirst({
       where: {
-        id: params.workspaceId,
+        workspaceId: params.workspaceId,
+        userId: dbUser.id
+      }
+    });
+
+    if (!workspaceMember) {
+      return new NextResponse("Workspace not found", { status: 404 });
+    }
+
+    const workspace = await db.workspace.findUnique({
+      where: {
+        id: params.workspaceId
+      },
+      include: {
         members: {
-          some: {
-            userId: user.id,
-            role: "ADMIN"
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                imageUrl: true,
+                email: true
+              }
+            }
+          }
+        },
+        channels: {
+          where: {
+            OR: [
+              { type: "PUBLIC" },
+              {
+                members: {
+                  some: {
+                    userId: dbUser.id
+                  }
+                }
+              }
+            ]
+          },
+          include: {
+            members: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    imageUrl: true
+                  }
+                }
+              }
+            }
           }
         }
       }
     });
 
     if (!workspace) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return new NextResponse("Workspace not found", { status: 404 });
     }
 
-    const updatedWorkspace = await db.workspace.update({
-      where: {
-        id: params.workspaceId
-      },
-      data: {
-        name: validatedData.data.name
-      }
-    });
-
-    return NextResponse.json(updatedWorkspace);
+    return NextResponse.json(workspace);
   } catch (error) {
-    console.error("[WORKSPACE_PATCH]", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    console.error("[WORKSPACE_GET]", error);
+    return new NextResponse("Internal Error", { status: 500 });
   }
 } 

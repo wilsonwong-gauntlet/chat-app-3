@@ -1,73 +1,85 @@
 import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
 
 import { db } from "@/lib/db";
-import { getCurrentUser } from "@/lib/current-user";
 
 const createWorkspaceSchema = z.object({
-  name: z.string().min(1, {
-    message: "Workspace name is required."
-  }).max(32, {
-    message: "Workspace name cannot be longer than 32 characters."
-  }).regex(/^[a-zA-Z0-9-\s]+$/, {
-    message: "Workspace name can only contain letters, numbers, spaces, and hyphens."
-  })
+  name: z.string().min(1).max(32).regex(/^[a-zA-Z0-9-\s]+$/)
 });
 
 export async function POST(req: Request) {
   try {
-    const user = await getCurrentUser();
+    const { userId } = await auth();
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!userId) {
+      return new NextResponse("Unauthorized", { status: 401 });
     }
 
     const body = await req.json();
-    const validatedData = createWorkspaceSchema.safeParse(body);
+    const { name } = createWorkspaceSchema.parse(body);
 
-    if (!validatedData.success) {
-      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    // Get the user from our database
+    const dbUser = await db.user.findUnique({
+      where: { clerkId: userId }
+    });
+
+    if (!dbUser) {
+      return new NextResponse("User not found", { status: 404 });
     }
 
-    // Create workspace with general channel in a transaction
-    const workspace = await db.$transaction(async (tx) => {
-      // Create the workspace
-      const workspace = await tx.workspace.create({
-        data: {
-          name: validatedData.data.name,
-          members: {
-            create: {
-              userId: user.id,
-              role: "ADMIN"
+    // Check if user already has a workspace with this name
+    const existingWorkspace = await db.workspace.findFirst({
+      where: {
+        name,
+        members: {
+          some: {
+            userId: dbUser.id
+          }
+        }
+      }
+    });
+
+    if (existingWorkspace) {
+      return new NextResponse("You already have a workspace with this name", { status: 400 });
+    }
+
+    // Create the workspace and add the creator as an admin
+    const workspace = await db.workspace.create({
+      data: {
+        name,
+        members: {
+          create: {
+            userId: dbUser.id,
+            role: "ADMIN"
+          }
+        },
+        channels: {
+          create: {
+            name: "general",
+            description: "General discussion channel",
+            type: "PUBLIC",
+            members: {
+              create: {
+                userId: dbUser.id
+              }
             }
           }
         }
-      });
-
-      // Create the general channel
-      await tx.channel.create({
-        data: {
-          name: "general",
-          description: "General discussion channel",
-          workspaceId: workspace.id,
-          type: "PUBLIC",
-          members: {
-            create: {
-              userId: user.id
-            }
-          }
-        }
-      });
-
-      return workspace;
+      },
+      include: {
+        members: true,
+        channels: true
+      }
     });
 
     return NextResponse.json(workspace);
   } catch (error) {
     console.error("[WORKSPACES_POST]", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    if (error instanceof z.ZodError) {
+      return new NextResponse("Invalid request data", { status: 422 });
+    }
+
+    return new NextResponse("Internal Error", { status: 500 });
   }
 }
