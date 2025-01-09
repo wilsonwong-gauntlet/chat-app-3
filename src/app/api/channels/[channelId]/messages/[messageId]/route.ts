@@ -37,7 +37,7 @@ export async function PATCH(
     });
 
     if (!message) {
-      return new NextResponse("Message not found", { status: 404 });
+      return new NextResponse("Message not found or unauthorized", { status: 404 });
     }
 
     const updatedMessage = await db.message.update({
@@ -52,11 +52,11 @@ export async function PATCH(
       }
     });
 
-    await pusherServer.trigger(params.channelId, "update-message", updatedMessage);
+    await pusherServer.trigger(params.channelId, "message-update", updatedMessage);
 
     return NextResponse.json(updatedMessage);
   } catch (error) {
-    console.log("[MESSAGE_ID_PATCH]", error);
+    console.log("[MESSAGE_PATCH]", error);
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
@@ -83,7 +83,7 @@ export async function DELETE(
     });
 
     if (!message) {
-      return new NextResponse("Message not found", { status: 404 });
+      return new NextResponse("Message not found or unauthorized", { status: 404 });
     }
 
     await db.message.delete({
@@ -92,11 +92,11 @@ export async function DELETE(
       }
     });
 
-    await pusherServer.trigger(params.channelId, "delete-message", params.messageId);
+    await pusherServer.trigger(params.channelId, "message-delete", params.messageId);
 
-    return new NextResponse(null, { status: 204 });
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.log("[MESSAGE_ID_DELETE]", error);
+    console.log("[MESSAGE_DELETE]", error);
     return new NextResponse("Internal Error", { status: 500 });
   }
 } 
