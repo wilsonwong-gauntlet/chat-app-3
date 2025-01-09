@@ -25,16 +25,26 @@ export async function generatePresignedUrl(
   fileType: string,
   fileName: string
 ): Promise<PresignedUrlResponse> {
-  const key = `uploads/${uuidv4()}-${fileName}`;
+  const cleanFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const key = `uploads/${uuidv4()}-${cleanFileName}`;
+
   const command = new PutObjectCommand({
-    Bucket: process.env.AWS_S3_BUCKET_NAME,
+    Bucket: process.env.AWS_S3_BUCKET_NAME!,
     Key: key,
     ContentType: fileType,
-    ACL: "public-read",
   });
 
-  const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+  const presignedUrl = await getSignedUrl(s3Client, command, { 
+    expiresIn: 60 * 5,
+  });
+  
   const fileUrl = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+
+  console.log('Generated URLs:', {
+    presignedUrl,
+    fileUrl,
+    key
+  });
 
   return {
     presignedUrl,

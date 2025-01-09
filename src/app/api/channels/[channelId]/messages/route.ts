@@ -6,10 +6,76 @@ import { db } from "@/lib/db";
 import { pusherServer } from "@/lib/pusher";
 
 const messageSchema = z.object({
-  content: z.string().min(1),
+  content: z.string(),
   parentId: z.string().optional(),
-  fileUrl: z.string().url().optional()
+  fileUrl: z.string().url().nullish()
+}).refine((data) => {
+  // Either content or fileUrl must be present
+  return data.content.length > 0 || (data.fileUrl !== null && data.fileUrl !== undefined);
+}, {
+  message: "Either message content or file attachment is required"
 });
+
+export async function GET(
+  req: Request,
+  { params }: { params: { channelId: string } }
+) {
+  try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const channel = await db.channel.findUnique({
+      where: {
+        id: params.channelId,
+        OR: [
+          {
+            type: "PUBLIC"
+          },
+          {
+            members: {
+              some: {
+                user: {
+                  clerkId: userId
+                }
+              }
+            }
+          }
+        ]
+      }
+    });
+
+    if (!channel) {
+      return new NextResponse("Channel not found", { status: 404 });
+    }
+
+    const messages = await db.message.findMany({
+      where: {
+        channelId: params.channelId,
+        parentId: null // Only fetch top-level messages, not replies
+      },
+      include: {
+        user: true,
+        _count: {
+          select: {
+            replies: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: "desc"
+      },
+      take: 50 // Limit to last 50 messages
+    });
+
+    return NextResponse.json(messages);
+  } catch (error) {
+    console.log("[MESSAGES_GET]", error);
+    return new NextResponse("Internal Error", { status: 500 });
+  }
+}
 
 export async function POST(
   req: Request,
@@ -23,7 +89,10 @@ export async function POST(
     }
 
     const body = await req.json();
+    console.log("[MESSAGE_POST] Request body:", body);
+
     const { content, parentId, fileUrl } = messageSchema.parse(body);
+    console.log("[MESSAGE_POST] Parsed data:", { content, parentId, fileUrl });
 
     const channel = await db.channel.findUnique({
       where: {
@@ -129,7 +198,10 @@ export async function POST(
 
     return NextResponse.json(message);
   } catch (error) {
-    console.log("[MESSAGES_POST]", error);
-    return new NextResponse("Internal Error", { status: 500 });
+    console.error("[MESSAGES_POST] Error details:", error);
+    return new NextResponse(
+      error instanceof Error ? error.message : "Internal Error", 
+      { status: 500 }
+    );
   }
 } 

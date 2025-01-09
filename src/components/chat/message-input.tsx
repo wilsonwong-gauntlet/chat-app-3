@@ -66,12 +66,13 @@ export function MessageInput({
         body: JSON.stringify({
           content: content.trim() || "Shared a file",
           parentId,
-          fileUrl
+          fileUrl: fileUrl || null
         })
       });
 
       if (!response.ok) {
-        throw new Error("Failed to send message");
+        const error = await response.text();
+        throw new Error(error);
       }
 
       setContent("");

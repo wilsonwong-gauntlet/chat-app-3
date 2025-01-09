@@ -38,10 +38,26 @@ export function FileAttachment({ onFileUpload, onClose }: FileAttachmentProps) {
         fileType: file.type,
       });
 
+      console.log("Presigned URL data:", data);
+
       // Upload to S3
-      await axios.put(data.presignedUrl, file, {
-        headers: { "Content-Type": file.type },
+      const uploadResponse = await fetch(data.presignedUrl, {
+        method: "PUT",
+        body: file,
+        headers: {
+          "Content-Type": file.type,
+        },
       });
+
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        console.error("S3 Upload Error:", {
+          status: uploadResponse.status,
+          statusText: uploadResponse.statusText,
+          error: errorText
+        });
+        throw new Error(`Upload failed: ${uploadResponse.statusText}`);
+      }
 
       // If it's an image, show preview
       if (getFileType(file.name) === "image") {
