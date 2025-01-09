@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
 import EmptyWorkspaceClient from "@/components/empty-workspace-client";
+import WorkspaceListClient from "@/components/workspace-list-client";
 
 export default async function WorkspacesPage() {
   const { userId } = await auth();
@@ -11,23 +12,32 @@ export default async function WorkspacesPage() {
     redirect("/sign-in");
   }
 
-  // Check if user has any workspaces
+  // Get all workspaces the user is a member of
   const workspaces = await db.workspace.findMany({
     where: {
       members: {
         some: {
-          userId: userId
+          user: {
+            clerkId: userId
+          }
         }
       }
     },
-    take: 1
+    include: {
+      _count: {
+        select: {
+          members: true,
+          channels: true
+        }
+      }
+    }
   });
 
-  // If user has workspaces, redirect to the first one
-  if (workspaces.length > 0) {
-    redirect(`/workspaces/${workspaces[0].id}`);
+  // If no workspaces, show empty state
+  if (workspaces.length === 0) {
+    return <EmptyWorkspaceClient />;
   }
 
-  // If no workspaces, show empty state
-  return <EmptyWorkspaceClient />;
+  // Show list of workspaces
+  return <WorkspaceListClient workspaces={workspaces} />;
 } 
