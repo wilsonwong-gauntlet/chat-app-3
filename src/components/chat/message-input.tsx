@@ -1,43 +1,36 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect } from "react";
+import { SendHorizontal } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { SendHorizontal } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface MessageInputProps {
   channelId: string;
 }
 
-export function MessageInput({
-  channelId
-}: MessageInputProps) {
+export function MessageInput({ channelId }: MessageInputProps) {
   const [content, setContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const onSubmit = async () => {
     if (!content.trim()) return;
 
     try {
       setIsLoading(true);
       const response = await fetch(`/api/channels/${channelId}/messages`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ content })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: content.trim() })
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to send message");
-      }
+      if (!response.ok) throw new Error("Failed to send message");
 
       setContent("");
-      // No need to refresh the page, Pusher will handle real-time updates
+      textareaRef.current?.focus();
     } catch (error) {
       console.error(error);
     } finally {
@@ -45,23 +38,43 @@ export function MessageInput({
     }
   };
 
+  const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      onSubmit();
+    }
+  };
+
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
+
   return (
-    <form onSubmit={onSubmit} className="flex items-center gap-x-2">
+    <div className="relative">
       <Textarea
+        ref={textareaRef}
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        placeholder="Type a message..."
-        className="resize-none"
+        onKeyDown={onKeyDown}
         rows={1}
+        placeholder="Type a message..."
+        className="resize-none pr-12 py-3 bg-zinc-200/90 dark:bg-zinc-700/75 border-none focus:ring-0"
         disabled={isLoading}
       />
-      <Button
-        type="submit"
-        disabled={isLoading || !content.trim()}
-        size="icon"
-      >
-        <SendHorizontal className="h-4 w-4" />
-      </Button>
-    </form>
+      <div className="absolute right-2 bottom-1">
+        <Button
+          onClick={onSubmit}
+          size="sm"
+          variant="ghost"
+          className={cn(
+            "h-8 w-8 p-0 hover:bg-zinc-600",
+            isLoading && "cursor-not-allowed opacity-50"
+          )}
+          disabled={isLoading || !content.trim()}
+        >
+          <SendHorizontal className="h-5 w-5" />
+        </Button>
+      </div>
+    </div>
   );
 } 

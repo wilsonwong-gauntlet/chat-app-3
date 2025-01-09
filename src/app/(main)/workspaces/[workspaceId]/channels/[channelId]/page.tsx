@@ -5,10 +5,28 @@ import { db } from "@/lib/db";
 import { MessageInput } from "@/components/chat/message-input";
 import { MessageList } from "@/components/chat/message-list";
 
-async function getChannel(channelId: string, userId: string) {
-  const channel = await db.channel.findUnique({
+async function getChannel(workspaceId: string, channelId: string, userId: string) {
+  // First check if user is a member of the workspace
+  const workspaceMember = await db.workspaceMember.findFirst({
+    where: {
+      workspace: {
+        id: workspaceId
+      },
+      user: {
+        clerkId: userId
+      }
+    }
+  });
+
+  if (!workspaceMember) {
+    return null;
+  }
+
+  // Then check if user has access to the channel
+  const channel = await db.channel.findFirst({
     where: {
       id: channelId,
+      workspaceId,
       OR: [
         {
           type: "PUBLIC"
@@ -43,7 +61,7 @@ async function getChannel(channelId: string, userId: string) {
 export default async function ChannelPage({
   params
 }: {
-  params: { channelId: string }
+  params: { workspaceId: string; channelId: string }
 }) {
   const { userId } = await auth();
 
@@ -51,7 +69,7 @@ export default async function ChannelPage({
     redirect("/sign-in");
   }
 
-  const channel = await getChannel(params.channelId, userId);
+  const channel = await getChannel(params.workspaceId, params.channelId, userId);
 
   if (!channel) {
     redirect("/workspaces");

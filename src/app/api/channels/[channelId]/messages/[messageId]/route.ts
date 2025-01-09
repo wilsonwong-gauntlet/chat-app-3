@@ -30,6 +30,9 @@ export async function PATCH(
         user: {
           clerkId: userId
         }
+      },
+      include: {
+        user: true
       }
     });
 
@@ -49,11 +52,11 @@ export async function PATCH(
       }
     });
 
-    await pusherServer.trigger(params.channelId, "message-update", updatedMessage);
+    await pusherServer.trigger(params.channelId, "update-message", updatedMessage);
 
     return NextResponse.json(updatedMessage);
   } catch (error) {
-    console.log("[MESSAGE_PATCH]", error);
+    console.log("[MESSAGE_ID_PATCH]", error);
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
@@ -89,11 +92,11 @@ export async function DELETE(
       }
     });
 
-    await pusherServer.trigger(params.channelId, "message-delete", params.messageId);
+    await pusherServer.trigger(params.channelId, "delete-message", params.messageId);
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
-    console.log("[MESSAGE_DELETE]", error);
+    console.log("[MESSAGE_ID_DELETE]", error);
     return new NextResponse("Internal Error", { status: 500 });
   }
 } 

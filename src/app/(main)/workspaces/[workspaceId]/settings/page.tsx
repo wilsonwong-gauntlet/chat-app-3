@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 
 import { db } from "@/lib/db";
 import { WorkspaceNameForm } from "@/components/workspace/workspace-name-form";
+import { AddMemberForm } from "@/components/workspace/add-member-form";
 
 async function getWorkspace(workspaceId: string, userId: string) {
   const workspace = await db.workspace.findUnique({
@@ -73,7 +74,35 @@ export default async function WorkspaceSettingsPage({
           </div>
           <div className="p-4 rounded-lg bg-white dark:bg-zinc-900 border">
             <h3 className="text-xl font-semibold mb-4">Members</h3>
-            {/* Member list and management will go here */}
+            <div className="space-y-4">
+              <AddMemberForm workspaceId={workspace.id} />
+              <div className="mt-6">
+                <h4 className="text-sm font-medium mb-2">Current Members</h4>
+                <div className="space-y-2">
+                  {workspace.members.map((member) => (
+                    <div
+                      key={member.id}
+                      className="flex items-center justify-between p-2 rounded-md bg-zinc-100 dark:bg-zinc-800"
+                    >
+                      <div className="flex items-center gap-x-2">
+                        <img
+                          src={member.user.imageUrl || "/placeholder-avatar.png"}
+                          alt={member.user.name}
+                          className="w-8 h-8 rounded-full"
+                        />
+                        <div>
+                          <p className="text-sm font-medium">{member.user.name}</p>
+                          <p className="text-xs text-zinc-500">{member.user.email}</p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-medium px-2 py-1 rounded-full bg-zinc-200 dark:bg-zinc-700">
+                        {member.role}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <div className="space-y-4">
