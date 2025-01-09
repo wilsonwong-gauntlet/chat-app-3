@@ -1,9 +1,10 @@
 import { create } from "zustand";
 
-export type ModalType = "createWorkspace" | "workspaceSettings" | "inviteMembers" | "createChannel";
+export type ModalType = "createWorkspace" | "workspaceSettings" | "createChannel" | "createDM" | "inviteMembers";
 
 interface ModalData {
   workspaceId?: string;
+  userId?: string;
 }
 
 interface ModalStore {
@@ -19,5 +20,5 @@ export const useModal = create<ModalStore>((set) => ({
   data: {},
   isOpen: false,
   onOpen: (type, data = {}) => set({ isOpen: true, type, data }),
-  onClose: () => set({ type: null, data: {}, isOpen: false }),
+  onClose: () => set({ type: null, isOpen: false })
 })); 

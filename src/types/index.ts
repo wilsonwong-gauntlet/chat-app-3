@@ -1,6 +1,8 @@
-import { Message, User, Channel as PrismaChannel, Workspace as PrismaWorkspace, WorkspaceMember, ChannelMember } from "@prisma/client";
+import type { Channel, User, Message, Workspace, WorkspaceMember, ChannelMember } from ".prisma/client";
 
-export interface WorkspaceWithRelations extends PrismaWorkspace {
+export type { Channel, User, Message, Workspace, WorkspaceMember, ChannelMember };
+
+export interface WorkspaceWithRelations extends Workspace {
   members: (WorkspaceMember & {
     user: {
       id: string;
@@ -9,7 +11,7 @@ export interface WorkspaceWithRelations extends PrismaWorkspace {
       imageUrl: string | null;
     }
   })[];
-  channels: (PrismaChannel & {
+  channels: (Channel & {
     members: (ChannelMember & {
       user: {
         id: string;
@@ -22,7 +24,7 @@ export interface WorkspaceWithRelations extends PrismaWorkspace {
 
 export interface MessageWithUser extends Message {
   user: User;
-  channel: PrismaChannel;
+  channel: Channel;
   replies?: MessageWithUser[];
   _count?: {
     replies: number;
