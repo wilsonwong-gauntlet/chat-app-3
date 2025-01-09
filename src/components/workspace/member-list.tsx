@@ -1,46 +1,70 @@
 "use client";
 
-import { WorkspaceMember } from "@prisma/client";
+import { MoreVertical } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
 
-import { useWorkspace } from "@/providers/workspace-provider";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { UserAvatar } from "@/components/user-avatar";
+import { MemberOptions } from "./member-options";
+import { WorkspaceWithRelations } from "@/types";
 
-interface MemberWithUser extends WorkspaceMember {
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    imageUrl: string | null;
-  }
+interface MemberListProps {
+  workspace: WorkspaceWithRelations | null | undefined;
 }
 
-export function MemberList() {
-  const { workspace } = useWorkspace();
+export function MemberList({ workspace }: MemberListProps) {
+  const { user } = useUser();
 
-  if (!workspace?.members) return null;
+  if (!workspace) {
+    return null;
+  }
 
   return (
-    <ScrollArea className="h-[300px]">
-      <div className="space-y-4">
-        {workspace.members.map((member: MemberWithUser) => (
-          <div key={member.id} className="flex items-center gap-x-2 px-2">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={member.user.imageUrl || undefined} />
-              <AvatarFallback>
-                {member.user.name?.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold">
-                {member.user.name}
-              </span>
-              <span className="text-xs text-zinc-400">
-                {member.role.toLowerCase()}
-              </span>
+    <ScrollArea className="h-full">
+      <div className="flex flex-col gap-y-2 p-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Members</h3>
+        </div>
+        <div className="space-y-2">
+          {workspace.members?.map((member) => (
+            <div
+              key={member.id}
+              className="group flex items-center justify-between gap-x-2 rounded-md px-2 py-2 hover:bg-accent/50"
+            >
+              <div className="flex items-center gap-x-2">
+                <UserAvatar
+                  userId={member.user.id}
+                  imageUrl={member.user.imageUrl}
+                  name={member.user.name}
+                />
+                <div className="space-y-1">
+                  <div className="text-sm font-medium leading-none">
+                    {member.user.name}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {member.role.toLowerCase()}
+                  </p>
+                </div>
+              </div>
+              <MemberOptions
+                workspaceId={workspace.id}
+                memberId={member.id}
+                memberRole={member.role}
+                isCurrentUser={member.user.id === user?.id}
+                trigger={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 opacity-0 group-hover:opacity-100"
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                }
+              />
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </ScrollArea>
   );

@@ -22,13 +22,15 @@ interface MemberOptionsProps {
   memberId: string;
   memberRole: string;
   isCurrentUser: boolean;
+  trigger?: React.ReactNode;
 }
 
 export function MemberOptions({
   workspaceId,
   memberId,
   memberRole,
-  isCurrentUser
+  isCurrentUser,
+  trigger
 }: MemberOptionsProps) {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -86,13 +88,15 @@ export function MemberOptions({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          size="icon"
-          variant="ghost"
-          disabled={isLoading}
-        >
-          <MoreVertical className="h-4 w-4" />
-        </Button>
+        {trigger || (
+          <Button
+            size="icon"
+            variant="ghost"
+            disabled={isLoading}
+          >
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+        )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem
