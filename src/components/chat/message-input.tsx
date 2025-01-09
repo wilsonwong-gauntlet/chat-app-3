@@ -37,7 +37,7 @@ export function MessageInput({
       }
 
       setContent("");
-      router.refresh();
+      // No need to refresh the page, Pusher will handle real-time updates
     } catch (error) {
       console.error(error);
     } finally {

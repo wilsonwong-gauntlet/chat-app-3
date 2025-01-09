@@ -1,50 +1,62 @@
-import { Message, User, Reaction } from "@prisma/client";
-import { MessageItem } from "./message-item";
+"use client";
+
+import { useEffect, useState, useRef } from "react";
+import { Message, User } from "@prisma/client";
+import { pusherClient } from "@/lib/pusher";
 
 interface MessageWithUser extends Message {
   user: User;
-  reactions: Reaction[];
 }
 
 interface MessageListProps {
-  messages: MessageWithUser[];
-  isLoading?: boolean;
+  channelId: string;
+  initialMessages: MessageWithUser[];
 }
 
-export function MessageList({ messages, isLoading }: MessageListProps) {
-  if (isLoading) {
-    return (
-      <div className="flex flex-col space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="flex items-start space-x-4">
-            <div className="h-10 w-10 rounded-full bg-slate-200 animate-pulse" />
-            <div className="flex-1 space-y-2">
-              <div className="h-4 w-1/4 bg-slate-200 rounded animate-pulse" />
-              <div className="h-4 w-3/4 bg-slate-200 rounded animate-pulse" />
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
+export function MessageList({
+  channelId,
+  initialMessages
+}: MessageListProps) {
+  const [messages, setMessages] = useState<MessageWithUser[]>(initialMessages);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-  if (messages.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full">
-        <p className="text-sm text-slate-500">No messages yet</p>
-      </div>
-    );
-  }
+  useEffect(() => {
+    pusherClient.subscribe(channelId);
+    bottomRef?.current?.scrollIntoView();
+
+    const messageHandler = (message: MessageWithUser) => {
+      setMessages((current) => [...current, message]);
+      bottomRef?.current?.scrollIntoView();
+    };
+
+    pusherClient.bind("new-message", messageHandler);
+
+    return () => {
+      pusherClient.unsubscribe(channelId);
+      pusherClient.unbind("new-message", messageHandler);
+    };
+  }, [channelId]);
 
   return (
-    <div className="flex flex-col space-y-4">
+    <div className="flex-1 p-4 space-y-4 overflow-y-auto">
       {messages.map((message) => (
-        <MessageItem
-          key={message.id}
-          message={message}
-          isOwn={message.userId === "currentUserId"} // TODO: Replace with actual user ID
-        />
+        <div key={message.id} className="flex items-start gap-x-3">
+          <div className="flex flex-col">
+            <div className="flex items-center gap-x-2">
+              <p className="font-semibold text-sm">
+                {message.user.name}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {new Date(message.createdAt).toLocaleString()}
+              </p>
+            </div>
+            <p className="text-sm">
+              {message.content}
+            </p>
+          </div>
+        </div>
       ))}
+      <div ref={bottomRef} />
     </div>
   );
 } 

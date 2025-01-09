@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 
 import { db } from "@/lib/db";
 import { MessageInput } from "@/components/chat/message-input";
+import { MessageList } from "@/components/chat/message-list";
 
 async function getChannel(channelId: string, userId: string) {
   const channel = await db.channel.findUnique({
@@ -58,25 +59,10 @@ export default async function ChannelPage({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-        {channel.messages.map((message) => (
-          <div key={message.id} className="flex items-start gap-x-3">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-x-2">
-                <p className="font-semibold text-sm">
-                  {message.user.name}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {new Date(message.createdAt).toLocaleString()}
-                </p>
-              </div>
-              <p className="text-sm">
-                {message.content}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
+      <MessageList
+        channelId={params.channelId}
+        initialMessages={channel.messages}
+      />
       <div className="p-4 border-t">
         <MessageInput channelId={params.channelId} />
       </div>

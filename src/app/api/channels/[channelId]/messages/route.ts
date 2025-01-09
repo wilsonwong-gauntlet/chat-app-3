@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
 
 import { db } from "@/lib/db";
-import { getCurrentUser } from "@/lib/current-user";
+import { pusherServer } from "@/lib/pusher";
 
 const messageSchema = z.object({
-  content: z.string().min(1).max(2000)
+  content: z.string().min(1)
 });
 
 export async function POST(
@@ -13,21 +14,16 @@ export async function POST(
   { params }: { params: { channelId: string } }
 ) {
   try {
-    const user = await getCurrentUser();
+    const { userId } = await auth();
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!userId) {
+      return new NextResponse("Unauthorized", { status: 401 });
     }
 
     const body = await req.json();
-    const validatedData = messageSchema.safeParse(body);
+    const { content } = messageSchema.parse(body);
 
-    if (!validatedData.success) {
-      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
-    }
-
-    // Check if user has access to the channel
-    const channel = await db.channel.findFirst({
+    const channel = await db.channel.findUnique({
       where: {
         id: params.channelId,
         OR: [
@@ -37,35 +33,52 @@ export async function POST(
           {
             members: {
               some: {
-                userId: user.id
+                user: {
+                  clerkId: userId
+                }
               }
             }
           }
         ]
+      },
+      include: {
+        members: {
+          include: {
+            user: true
+          }
+        }
       }
     });
 
     if (!channel) {
-      return NextResponse.json({ error: "Channel not found" }, { status: 404 });
+      return new NextResponse("Channel not found", { status: 404 });
+    }
+
+    const member = channel.members.find(
+      (member) => member.user.clerkId === userId
+    );
+
+    if (!member) {
+      return new NextResponse("Member not found", { status: 404 });
     }
 
     const message = await db.message.create({
       data: {
-        content: validatedData.data.content,
-        channelId: params.channelId,
-        userId: user.id
+        content,
+        channelId: channel.id,
+        userId: member.userId
       },
       include: {
         user: true
       }
     });
 
+    // Trigger the new message event
+    await pusherServer.trigger(channel.id, "new-message", message);
+
     return NextResponse.json(message);
   } catch (error) {
-    console.error("[MESSAGES_POST]", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    console.log("[MESSAGES_POST]", error);
+    return new NextResponse("Internal Error", { status: 500 });
   }
 } 
