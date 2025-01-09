@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { MessageWithUser } from "@/types";
+import { Markdown } from "@/components/markdown";
 
 interface MessageItemProps {
   message: MessageWithUser;
@@ -30,6 +31,7 @@ export function MessageItem({
   const isOwner = message.user.clerkId === user?.id;
   const isEditing = editingId === message.id;
   const hasReplies = !isThread && message._count?.replies && message._count.replies > 0;
+  const replyCount = message._count?.replies || 0;
 
   const onEdit = async () => {
     try {
@@ -98,8 +100,9 @@ export function MessageItem({
             <Textarea
               value={editContent}
               onChange={(e) => setEditContent(e.target.value)}
-              className="flex-1 resize-none p-2 h-[70px]"
+              className="flex-1 resize-none p-2 h-[70px] min-w-0"
               disabled={isLoading}
+              placeholder="Use markdown for formatting"
             />
             <div className="flex flex-col gap-y-2">
               <Button
@@ -125,22 +128,23 @@ export function MessageItem({
           </div>
         ) : (
           <div 
-            className="flex flex-col gap-y-1 cursor-pointer"
+            className="flex flex-col gap-y-1"
             onClick={() => !isThread && onThreadClick?.(message)}
           >
-            <p className="text-sm">
-              {message.content}
-            </p>
-            {hasReplies && (
+            <Markdown 
+              content={message.content} 
+              className="text-sm break-words"
+            />
+            {replyCount > 0 && !isThread && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onThreadClick?.(message);
                 }}
-                className="flex items-center gap-x-2 text-xs text-muted-foreground hover:text-primary transition w-fit"
+                className="flex items-center gap-x-2 text-xs text-muted-foreground hover:text-primary transition w-fit mt-1"
               >
                 <MessageCircle className="h-3 w-3" />
-                {message._count?.replies} {message._count?.replies === 1 ? 'reply' : 'replies'}
+                {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
               </button>
             )}
           </div>
