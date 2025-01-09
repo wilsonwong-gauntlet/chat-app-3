@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Message, User, Channel } from "@prisma/client";
 import { useUser } from "@clerk/nextjs";
-import { Edit2, MessageCircle, Trash2, X, Check } from "lucide-react";
+import { Edit2, MessageCircle, Trash2, X, Check, SmilePlus, Reply } from "lucide-react";
 import { format } from "date-fns";
+import { pusherClient } from "@/lib/pusher";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,6 +13,12 @@ import { cn } from "@/lib/utils";
 import { MessageWithUser } from "@/types";
 import { Markdown } from "@/components/markdown";
 import { MessageReactions } from "@/components/message-reactions";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface MessageItemProps {
   message: MessageWithUser;
@@ -28,11 +35,30 @@ export function MessageItem({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [replyCount, setReplyCount] = useState(message._count?.replies || 0);
 
   const isOwner = message.user.clerkId === user?.id;
   const isEditing = editingId === message.id;
-  const hasReplies = !isThread && message._count?.replies && message._count.replies > 0;
-  const replyCount = message._count?.replies || 0;
+  const showReplies = !isThread && replyCount > 0;
+
+  useEffect(() => {
+    if (isThread) return;
+
+    const channel = pusherClient.subscribe(message.channelId);
+    
+    const handleUpdate = (updatedMessage: MessageWithUser) => {
+      if (updatedMessage.id === message.id) {
+        setReplyCount(updatedMessage._count?.replies || 0);
+      }
+    };
+
+    channel.bind("message-update", handleUpdate);
+
+    return () => {
+      channel.unbind("message-update", handleUpdate);
+      pusherClient.unsubscribe(message.channelId);
+    };
+  }, [message.id, message.channelId, isThread]);
 
   const onEdit = async () => {
     try {
@@ -76,13 +102,13 @@ export function MessageItem({
   };
 
   return (
-    <div className="group flex items-start gap-x-3 py-2 px-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 rounded-md">
+    <div className="group relative flex items-start gap-x-3 py-2 px-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 rounded-md">
       <img
         src={message.user.imageUrl || "/placeholder-avatar.png"}
         alt={message.user.name}
         className="h-8 w-8 rounded-full"
       />
-      <div className="flex flex-col flex-1">
+      <div className="flex flex-col flex-1 min-w-0">
         <div className="flex items-center gap-x-2">
           <p className="font-medium text-sm hover:underline">
             {message.user.name}
@@ -140,7 +166,7 @@ export function MessageItem({
               messageId={message.id}
               channelId={message.channelId}
             />
-            {hasReplies && (
+            {showReplies && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -155,32 +181,83 @@ export function MessageItem({
           </div>
         )}
       </div>
-      {isOwner && !isEditing && (
-        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-x-2">
-          <Button
-            onClick={(e) => {
-              e.stopPropagation();
-              setEditingId(message.id);
-              setEditContent(message.content);
-            }}
-            size="sm"
-            variant="ghost"
-            disabled={isLoading}
-          >
-            <Edit2 className="h-4 w-4" />
-          </Button>
-          <Button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            size="sm"
-            variant="ghost"
-            disabled={isLoading}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
+      {!isEditing && (
+        <TooltipProvider>
+          <div className="opacity-0 group-hover:opacity-100 absolute right-2 top-2 flex items-center gap-x-2 bg-background/95 py-1 px-1 rounded-md shadow-sm border">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                >
+                  <SmilePlus className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Add reaction</TooltipContent>
+            </Tooltip>
+            {!isThread && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onThreadClick?.(message);
+                    }}
+                  >
+                    <Reply className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Reply in thread</TooltipContent>
+              </Tooltip>
+            )}
+            {isOwner && (
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingId(message.id);
+                        setEditContent(message.content);
+                      }}
+                      size="icon"
+                      variant="ghost"
+                      disabled={isLoading}
+                      className="h-7 w-7"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit message</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete();
+                      }}
+                      size="icon"
+                      variant="ghost"
+                      disabled={isLoading}
+                      className="h-7 w-7"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Delete message</TooltipContent>
+                </Tooltip>
+              </>
+            )}
+          </div>
+        </TooltipProvider>
       )}
     </div>
   );

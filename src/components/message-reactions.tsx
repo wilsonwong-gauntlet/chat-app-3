@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ReactionPicker } from "@/components/reaction-picker";
 import { cn } from "@/lib/utils";
 import { pusherClient } from "@/lib/pusher";
 
@@ -92,16 +91,12 @@ export function MessageReactions({
     }
   };
 
-  if (reactions.length === 0 && !isLoading) {
-    return (
-      <div className="flex items-center gap-1">
-        <ReactionPicker onEmojiSelect={handleReaction} />
-      </div>
-    );
+  if (reactions.length === 0) {
+    return null;
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="flex flex-wrap items-center gap-1 mt-1">
       {reactions.map((reaction) => (
         <Button
           key={reaction.emoji}
@@ -110,15 +105,14 @@ export function MessageReactions({
           onClick={() => handleReaction(reaction.emoji)}
           disabled={isLoading}
           className={cn(
-            "h-6 rounded-full px-2 text-xs hover:bg-accent",
-            reaction.hasReacted && "bg-accent"
+            "h-5 rounded-full px-1.5 text-xs hover:bg-accent/50",
+            reaction.hasReacted && "bg-accent/50"
           )}
         >
-          <span className="mr-1">{reaction.emoji}</span>
+          <span className="mr-0.5">{reaction.emoji}</span>
           <span>{reaction.count}</span>
         </Button>
       ))}
-      <ReactionPicker onEmojiSelect={handleReaction} />
     </div>
   );
 } 
