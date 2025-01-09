@@ -6,7 +6,8 @@ import { db } from "@/lib/db";
 import { pusherServer } from "@/lib/pusher";
 
 const messageSchema = z.object({
-  content: z.string().min(1)
+  content: z.string().min(1),
+  parentId: z.string().optional()
 });
 
 export async function POST(
@@ -21,7 +22,7 @@ export async function POST(
     }
 
     const body = await req.json();
-    const { content } = messageSchema.parse(body);
+    const { content, parentId } = messageSchema.parse(body);
 
     const channel = await db.channel.findUnique({
       where: {
@@ -62,19 +63,67 @@ export async function POST(
       return new NextResponse("Member not found", { status: 404 });
     }
 
+    // If this is a thread reply, verify parent message exists
+    if (parentId) {
+      const parentMessage = await db.message.findUnique({
+        where: {
+          id: parentId,
+          channelId: params.channelId
+        }
+      });
+
+      if (!parentMessage) {
+        return new NextResponse("Parent message not found", { status: 404 });
+      }
+    }
+
     const message = await db.message.create({
       data: {
         content,
         channelId: channel.id,
-        userId: member.userId
+        userId: member.userId,
+        parentId
       },
       include: {
-        user: true
+        user: true,
+        channel: true,
+        _count: {
+          select: {
+            replies: true
+          }
+        }
       }
     });
 
-    // Trigger the new message event
-    await pusherServer.trigger(channel.id, "new-message", message);
+    // If it's a thread reply, update the parent message and trigger in thread channel
+    if (parentId) {
+      const updatedParent = await db.message.findUnique({
+        where: { id: parentId },
+        include: {
+          user: true,
+          channel: true,
+          _count: {
+            select: {
+              replies: true
+            }
+          }
+        }
+      });
+
+      if (updatedParent) {
+        // Trigger update in main channel to update reply count
+        await pusherServer.trigger(channel.id, "message-update", updatedParent);
+        // Trigger new message in thread channel
+        await pusherServer.trigger(
+          `thread-${channel.id}-${parentId}`,
+          "new-message",
+          message
+        );
+      }
+    } else {
+      // If it's a main channel message, only trigger in the main channel
+      await pusherServer.trigger(channel.id, "new-message", message);
+    }
 
     return NextResponse.json(message);
   } catch (error) {

@@ -2,31 +2,13 @@ import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 
 import { db } from "@/lib/db";
-import { MessageInput } from "@/components/chat/message-input";
 import { MessageList } from "@/components/chat/message-list";
+import { MessageInput } from "@/components/chat/message-input";
 
-async function getChannel(workspaceId: string, channelId: string, userId: string) {
-  // First check if user is a member of the workspace
-  const workspaceMember = await db.workspaceMember.findFirst({
-    where: {
-      workspace: {
-        id: workspaceId
-      },
-      user: {
-        clerkId: userId
-      }
-    }
-  });
-
-  if (!workspaceMember) {
-    return null;
-  }
-
-  // Then check if user has access to the channel
-  const channel = await db.channel.findFirst({
+async function getChannel(channelId: string, userId: string) {
+  const channel = await db.channel.findUnique({
     where: {
       id: channelId,
-      workspaceId,
       OR: [
         {
           type: "PUBLIC"
@@ -44,12 +26,20 @@ async function getChannel(workspaceId: string, channelId: string, userId: string
     },
     include: {
       messages: {
+        where: {
+          parentId: null // Only fetch top-level messages
+        },
+        include: {
+          user: true,
+          channel: true,
+          _count: {
+            select: {
+              replies: true
+            }
+          }
+        },
         orderBy: {
           createdAt: "asc"
-        },
-        take: 50,
-        include: {
-          user: true
         }
       }
     }
@@ -58,18 +48,23 @@ async function getChannel(workspaceId: string, channelId: string, userId: string
   return channel;
 }
 
+interface ChannelPageProps {
+  params: {
+    workspaceId: string;
+    channelId: string;
+  }
+}
+
 export default async function ChannelPage({
   params
-}: {
-  params: { workspaceId: string; channelId: string }
-}) {
+}: ChannelPageProps) {
   const { userId } = await auth();
 
   if (!userId) {
     redirect("/sign-in");
   }
 
-  const channel = await getChannel(params.workspaceId, params.channelId, userId);
+  const channel = await getChannel(params.channelId, userId);
 
   if (!channel) {
     redirect("/workspaces");
@@ -77,12 +72,14 @@ export default async function ChannelPage({
 
   return (
     <div className="flex flex-col h-full">
-      <MessageList
-        channelId={params.channelId}
-        initialMessages={channel.messages}
-      />
-      <div className="p-4 border-t">
-        <MessageInput channelId={params.channelId} />
+      <div className="flex-1">
+        <MessageList
+          channelId={channel.id}
+          initialMessages={channel.messages}
+        />
+      </div>
+      <div className="p-4 border-t dark:border-zinc-700">
+        <MessageInput channelId={channel.id} />
       </div>
     </div>
   );

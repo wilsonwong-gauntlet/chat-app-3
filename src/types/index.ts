@@ -1,3 +1,5 @@
+import { Message, User, Channel as PrismaChannel } from "@prisma/client";
+
 export interface Workspace {
   id: string;
   name: string;
@@ -12,4 +14,13 @@ export interface Channel {
   workspaceId: string;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface MessageWithUser extends Message {
+  user: User;
+  channel: PrismaChannel;
+  replies?: MessageWithUser[];
+  _count?: {
+    replies: number;
+  }
 } 

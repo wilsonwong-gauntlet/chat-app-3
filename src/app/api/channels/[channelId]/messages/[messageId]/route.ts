@@ -48,11 +48,25 @@ export async function PATCH(
         content
       },
       include: {
-        user: true
+        user: true,
+        channel: true,
+        _count: {
+          select: {
+            replies: true
+          }
+        }
       }
     });
 
     await pusherServer.trigger(params.channelId, "message-update", updatedMessage);
+
+    if (updatedMessage.parentId) {
+      await pusherServer.trigger(
+        `thread-${params.channelId}-${updatedMessage.parentId}`,
+        "message-update",
+        updatedMessage
+      );
+    }
 
     return NextResponse.json(updatedMessage);
   } catch (error) {
@@ -93,6 +107,30 @@ export async function DELETE(
     });
 
     await pusherServer.trigger(params.channelId, "message-delete", params.messageId);
+
+    if (message.parentId) {
+      const updatedParent = await db.message.findUnique({
+        where: { id: message.parentId },
+        include: {
+          user: true,
+          channel: true,
+          _count: {
+            select: {
+              replies: true
+            }
+          }
+        }
+      });
+
+      if (updatedParent) {
+        await pusherServer.trigger(params.channelId, "message-update", updatedParent);
+        await pusherServer.trigger(
+          `thread-${params.channelId}-${message.parentId}`,
+          "message-delete",
+          params.messageId
+        );
+      }
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

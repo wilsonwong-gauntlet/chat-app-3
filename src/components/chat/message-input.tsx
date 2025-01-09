@@ -1,35 +1,47 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { SendHorizontal } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 
 interface MessageInputProps {
   channelId: string;
+  parentId?: string;
 }
 
-export function MessageInput({ channelId }: MessageInputProps) {
+export function MessageInput({
+  channelId,
+  parentId
+}: MessageInputProps) {
+  const router = useRouter();
   const [content, setContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const onSubmit = async () => {
-    if (!content.trim()) return;
-
     try {
       setIsLoading(true);
+
       const response = await fetch(`/api/channels/${channelId}/messages`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: content.trim() })
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          content,
+          parentId
+        })
       });
 
-      if (!response.ok) throw new Error("Failed to send message");
+      if (!response.ok) {
+        throw new Error("Failed to send message");
+      }
 
       setContent("");
+      router.refresh();
       textareaRef.current?.focus();
     } catch (error) {
       console.error(error);
@@ -41,7 +53,9 @@ export function MessageInput({ channelId }: MessageInputProps) {
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      onSubmit();
+      if (content.trim()) {
+        onSubmit();
+      }
     }
   };
 
@@ -50,31 +64,24 @@ export function MessageInput({ channelId }: MessageInputProps) {
   }, []);
 
   return (
-    <div className="relative">
+    <div className="flex items-center gap-x-2">
       <Textarea
         ref={textareaRef}
         value={content}
         onChange={(e) => setContent(e.target.value)}
         onKeyDown={onKeyDown}
+        placeholder={parentId ? "Reply to thread..." : "Send a message..."}
+        className="resize-none"
         rows={1}
-        placeholder="Type a message..."
-        className="resize-none pr-12 py-3 bg-zinc-200/90 dark:bg-zinc-700/75 border-none focus:ring-0"
         disabled={isLoading}
       />
-      <div className="absolute right-2 bottom-1">
-        <Button
-          onClick={onSubmit}
-          size="sm"
-          variant="ghost"
-          className={cn(
-            "h-8 w-8 p-0 hover:bg-zinc-600",
-            isLoading && "cursor-not-allowed opacity-50"
-          )}
-          disabled={isLoading || !content.trim()}
-        >
-          <SendHorizontal className="h-5 w-5" />
-        </Button>
-      </div>
+      <Button
+        onClick={onSubmit}
+        disabled={!content.trim() || isLoading}
+        size="icon"
+      >
+        <SendHorizontal className="h-4 w-4" />
+      </Button>
     </div>
   );
 } 

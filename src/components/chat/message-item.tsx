@@ -1,59 +1,178 @@
-import { Message, User, Reaction } from "@prisma/client";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+"use client";
 
-interface MessageWithUser extends Message {
-  user: User;
-  reactions: Reaction[];
-}
+import { useState } from "react";
+import { Message, User, Channel } from "@prisma/client";
+import { useUser } from "@clerk/nextjs";
+import { Edit2, MessageCircle, Trash2, X, Check } from "lucide-react";
+import { format } from "date-fns";
+
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import { MessageWithUser } from "@/types";
 
 interface MessageItemProps {
   message: MessageWithUser;
-  isOwn?: boolean;
+  isThread?: boolean;
+  onThreadClick?: (message: MessageWithUser) => void;
 }
 
-export function MessageItem({ message, isOwn }: MessageItemProps) {
+export function MessageItem({
+  message,
+  isThread,
+  onThreadClick
+}: MessageItemProps) {
+  const { user } = useUser();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const isOwner = message.user.clerkId === user?.id;
+  const isEditing = editingId === message.id;
+  const hasReplies = !isThread && message._count?.replies && message._count.replies > 0;
+
+  const onEdit = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/channels/${message.channelId}/messages/${message.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ content: editContent })
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to edit message");
+      }
+
+      setEditingId(null);
+      setEditContent("");
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const onDelete = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/channels/${message.channelId}/messages/${message.id}`, {
+        method: "DELETE"
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete message");
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className={cn("flex items-start space-x-4", isOwn && "flex-row-reverse space-x-reverse")}>
-      <Avatar>
-        <AvatarImage src={message.user.imageUrl || ""} />
-        <AvatarFallback>{message.user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-      </Avatar>
-      <div className="flex-1">
-        <div className="flex items-center space-x-2">
-          <span className="font-semibold">{message.user.name}</span>
-          <span className="text-xs text-slate-500">
+    <div className="group flex items-start gap-x-3 py-2 px-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 rounded-md">
+      <img
+        src={message.user.imageUrl || "/placeholder-avatar.png"}
+        alt={message.user.name}
+        className="h-8 w-8 rounded-full"
+      />
+      <div className="flex flex-col flex-1">
+        <div className="flex items-center gap-x-2">
+          <p className="font-medium text-sm hover:underline">
+            {message.user.name}
+          </p>
+          <p className="text-xs text-muted-foreground">
             {format(new Date(message.createdAt), "p")}
-          </span>
-        </div>
-        <div className="mt-1">
-          {message.fileUrl ? (
-            <div className="mt-2">
-              <img
-                src={message.fileUrl}
-                alt="Attachment"
-                className="max-w-sm rounded-lg"
-              />
-            </div>
-          ) : (
-            <p className="text-sm">{message.content}</p>
+          </p>
+          {message.updatedAt !== message.createdAt && (
+            <p className="text-[10px] text-muted-foreground uppercase">
+              edited
+            </p>
           )}
         </div>
-        {message.reactions.length > 0 && (
-          <div className="flex gap-1 mt-2">
-            {message.reactions.map((reaction) => (
-              <div
-                key={`${reaction.messageId}-${reaction.emoji}`}
-                className="flex items-center space-x-1 bg-slate-100 dark:bg-slate-800 rounded-full px-2 py-1"
+        {isEditing ? (
+          <div className="flex items-center gap-x-2 mt-2">
+            <Textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              className="flex-1 resize-none p-2 h-[70px]"
+              disabled={isLoading}
+            />
+            <div className="flex flex-col gap-y-2">
+              <Button
+                onClick={onEdit}
+                size="sm"
+                variant="ghost"
+                disabled={isLoading || !editContent.trim()}
               >
-                <span>{reaction.emoji}</span>
-                <span className="text-xs">1</span>
-              </div>
-            ))}
+                <Check className="h-4 w-4" />
+              </Button>
+              <Button
+                onClick={() => {
+                  setEditingId(null);
+                  setEditContent("");
+                }}
+                size="sm"
+                variant="ghost"
+                disabled={isLoading}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div 
+            className="flex flex-col gap-y-1 cursor-pointer"
+            onClick={() => !isThread && onThreadClick?.(message)}
+          >
+            <p className="text-sm">
+              {message.content}
+            </p>
+            {hasReplies && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onThreadClick?.(message);
+                }}
+                className="flex items-center gap-x-2 text-xs text-muted-foreground hover:text-primary transition w-fit"
+              >
+                <MessageCircle className="h-3 w-3" />
+                {message._count?.replies} {message._count?.replies === 1 ? 'reply' : 'replies'}
+              </button>
+            )}
           </div>
         )}
       </div>
+      {isOwner && !isEditing && (
+        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-x-2">
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditingId(message.id);
+              setEditContent(message.content);
+            }}
+            size="sm"
+            variant="ghost"
+            disabled={isLoading}
+          >
+            <Edit2 className="h-4 w-4" />
+          </Button>
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            size="sm"
+            variant="ghost"
+            disabled={isLoading}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 } 
