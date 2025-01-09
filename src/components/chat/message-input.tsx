@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { SendHorizontal, Bold, Italic, Code } from "lucide-react";
+import { SendHorizontal, Bold, Italic, Code, Paperclip } from "lucide-react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +14,13 @@ import {
   TooltipProvider
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { FileAttachment } from "./file-attachment";
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface MessageInputProps {
   channelId: string;
@@ -33,6 +41,8 @@ export function MessageInput({
   const router = useRouter();
   const [content, setContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isAttachmentOpen, setIsAttachmentOpen] = useState(false);
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isFocused, setIsFocused] = useState(false);
 
@@ -43,7 +53,7 @@ export function MessageInput({
   ];
 
   const onSubmit = async () => {
-    if (!content.trim()) return;
+    if (!content.trim() && !fileUrl) return;
     
     try {
       setIsLoading(true);
@@ -54,8 +64,9 @@ export function MessageInput({
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          content,
-          parentId
+          content: content.trim() || "Shared a file",
+          parentId,
+          fileUrl
         })
       });
 
@@ -64,6 +75,7 @@ export function MessageInput({
       }
 
       setContent("");
+      setFileUrl(null);
       router.refresh();
       textareaRef.current?.focus();
     } catch (error) {
@@ -98,6 +110,12 @@ export function MessageInput({
     }, 0);
   };
 
+  const handleFileUpload = (url: string) => {
+    setFileUrl(url);
+    setContent((prev) => prev.trim());
+    setIsAttachmentOpen(false);
+  };
+
   return (
     <div className="p-4 border-t">
       <TooltipProvider>
@@ -123,6 +141,31 @@ export function MessageInput({
                 </TooltipContent>
               </Tooltip>
             ))}
+            <Dialog open={isAttachmentOpen} onOpenChange={setIsAttachmentOpen}>
+              <DialogTrigger asChild>
+                <div
+                  className="h-7 w-7 ml-auto flex items-center justify-center rounded-md hover:bg-accent cursor-pointer"
+                >
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Paperclip className="h-4 w-4" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      Attach file
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogTitle className="sr-only">
+                  Upload File Attachment
+                </DialogTitle>
+                <FileAttachment
+                  onFileUpload={handleFileUpload}
+                  onClose={() => setIsAttachmentOpen(false)}
+                />
+              </DialogContent>
+            </Dialog>
           </div>
           <div className="relative flex items-center p-1">
             <Textarea
@@ -160,12 +203,12 @@ export function MessageInput({
             <div className="flex items-center px-2">
               <Button
                 onClick={onSubmit}
-                disabled={!content.trim() || isLoading}
+                disabled={(!content.trim() && !fileUrl) || isLoading}
                 size="icon"
                 variant="ghost"
                 className={cn(
                   "h-8 w-8 transition-opacity hover:bg-accent",
-                  !content.trim() && "opacity-50"
+                  (!content.trim() && !fileUrl) && "opacity-50"
                 )}
               >
                 <SendHorizontal className="h-4 w-4" />

@@ -7,7 +7,8 @@ import { pusherServer } from "@/lib/pusher";
 
 const messageSchema = z.object({
   content: z.string().min(1),
-  parentId: z.string().optional()
+  parentId: z.string().optional(),
+  fileUrl: z.string().url().optional()
 });
 
 export async function POST(
@@ -22,7 +23,7 @@ export async function POST(
     }
 
     const body = await req.json();
-    const { content, parentId } = messageSchema.parse(body);
+    const { content, parentId, fileUrl } = messageSchema.parse(body);
 
     const channel = await db.channel.findUnique({
       where: {
@@ -80,6 +81,7 @@ export async function POST(
     const message = await db.message.create({
       data: {
         content,
+        fileUrl,
         channelId: channel.id,
         userId: member.userId,
         parentId

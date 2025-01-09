@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { Message, User, Channel } from "@prisma/client";
 import { useUser } from "@clerk/nextjs";
-import { Edit2, MessageCircle, Trash2, X, Check, SmilePlus, Reply } from "lucide-react";
+import { Edit2, MessageCircle, Trash2, X, Check, SmilePlus, Reply, FileIcon } from "lucide-react";
 import { format } from "date-fns";
+import Image from "next/image";
 import { pusherClient } from "@/lib/pusher";
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
@@ -15,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { MessageWithUser } from "@/types";
 import { Markdown } from "@/components/markdown";
 import { MessageReactions } from "@/components/message-reactions";
+import { getFileType } from "@/lib/s3";
 import {
   Tooltip,
   TooltipContent,
@@ -130,6 +132,40 @@ export function MessageItem({
     }
   };
 
+  const renderFileAttachment = () => {
+    if (!message.fileUrl) return null;
+
+    const fileType = getFileType(message.fileUrl);
+    const fileName = message.fileUrl.split("/").pop() || "file";
+
+    if (fileType === "image") {
+      return (
+        <div className="mt-2 relative aspect-video w-full max-w-md rounded-lg overflow-hidden border">
+          <Image
+            src={message.fileUrl}
+            alt={fileName}
+            fill
+            className="object-contain"
+          />
+        </div>
+      );
+    }
+
+    return (
+      <a
+        href={message.fileUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-2 flex items-center gap-x-2 p-2 rounded-md border hover:bg-accent w-fit"
+      >
+        <FileIcon className="h-4 w-4" />
+        <span className="text-sm text-muted-foreground">
+          {fileName}
+        </span>
+      </a>
+    );
+  };
+
   return (
     <div className="group relative flex items-start gap-x-3 py-2 px-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 rounded-md">
       <img
@@ -191,6 +227,7 @@ export function MessageItem({
               content={message.content} 
               className="text-sm break-words"
             />
+            {renderFileAttachment()}
             <MessageReactions
               messageId={message.id}
               channelId={message.channelId}
@@ -249,13 +286,13 @@ export function MessageItem({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
                     onClick={(e) => {
                       e.stopPropagation();
                       onThreadClick?.(message);
                     }}
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
                   >
                     <Reply className="h-4 w-4" />
                   </Button>
@@ -273,9 +310,9 @@ export function MessageItem({
                         setEditingId(message.id);
                         setEditContent(message.content);
                       }}
-                      size="icon"
-                      variant="ghost"
                       disabled={isLoading}
+                      variant="ghost"
+                      size="icon"
                       className="h-7 w-7"
                     >
                       <Edit2 className="h-4 w-4" />
@@ -290,9 +327,9 @@ export function MessageItem({
                         e.stopPropagation();
                         onDelete();
                       }}
-                      size="icon"
-                      variant="ghost"
                       disabled={isLoading}
+                      variant="ghost"
+                      size="icon"
                       className="h-7 w-7"
                     >
                       <Trash2 className="h-4 w-4" />
