@@ -98,6 +98,7 @@ export function WorkspaceSidebar({ workspace }: WorkspaceSidebarProps) {
               </Button>
             ))}
           </div>
+          <MemberList workspace={workspace} />
         </div>
       </ScrollArea>
     </div>
