@@ -6,6 +6,8 @@ import { useUser } from "@clerk/nextjs";
 import { Edit2, MessageCircle, Trash2, X, Check, SmilePlus, Reply } from "lucide-react";
 import { format } from "date-fns";
 import { pusherClient } from "@/lib/pusher";
+import data from "@emoji-mart/data";
+import Picker from "@emoji-mart/react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,6 +21,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface MessageItemProps {
   message: MessageWithUser;
@@ -36,6 +43,7 @@ export function MessageItem({
   const [editContent, setEditContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [replyCount, setReplyCount] = useState(message._count?.replies || 0);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
 
   const isOwner = message.user.clerkId === user?.id;
   const isEditing = editingId === message.id;
@@ -98,6 +106,27 @@ export function MessageItem({
       console.error(error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const onEmojiSelect = async (emoji: any) => {
+    try {
+      const response = await fetch(`/api/channels/${message.channelId}/messages/${message.id}/reactions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ emoji: emoji.native })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to add reaction");
+      }
+
+      setIsPickerOpen(false);
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -184,21 +213,38 @@ export function MessageItem({
       {!isEditing && (
         <TooltipProvider>
           <div className="opacity-0 group-hover:opacity-100 absolute right-2 top-2 flex items-center gap-x-2 bg-background/95 py-1 px-1 rounded-md shadow-sm border">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                  }}
-                >
-                  <SmilePlus className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Add reaction</TooltipContent>
-            </Tooltip>
+            <Popover open={isPickerOpen} onOpenChange={setIsPickerOpen}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                    >
+                      <SmilePlus className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Add reaction</TooltipContent>
+              </Tooltip>
+              <PopoverContent 
+                className="w-full p-0 border-none" 
+                side="top" 
+                align="end"
+              >
+                <Picker
+                  data={data}
+                  onEmojiSelect={onEmojiSelect}
+                  theme="light"
+                  previewPosition="none"
+                  skinTonePosition="none"
+                />
+              </PopoverContent>
+            </Popover>
             {!isThread && (
               <Tooltip>
                 <TooltipTrigger asChild>
