@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 
 import { db } from "@/lib/db";
+import { MessageList } from "@/components/chat/message-list";
+import { MessageInput } from "@/components/chat/message-input";
 
 async function getChannel(channelId: string, userId: string) {
   // First get the database user
@@ -37,6 +39,37 @@ async function getChannel(channelId: string, userId: string) {
             }
           }
         }
+      },
+      messages: {
+        take: 50,
+        orderBy: {
+          createdAt: "desc"
+        },
+        include: {
+          channel: true,
+          user: true,
+          reactions: {
+            include: {
+              user: true
+            }
+          },
+          replies: {
+            include: {
+              channel: true,
+              user: true,
+              reactions: {
+                include: {
+                  user: true
+                }
+              }
+            }
+          },
+          _count: {
+            select: {
+              replies: true
+            }
+          }
+        }
       }
     }
   });
@@ -58,7 +91,10 @@ async function getChannel(channelId: string, userId: string) {
     }
   }
 
-  return channel;
+  return {
+    ...channel,
+    messages: channel.messages.reverse()
+  };
 }
 
 export default async function ChannelPage({
@@ -90,12 +126,13 @@ export default async function ChannelPage({
           {channel.name}
         </h2>
       </div>
-      <div className="flex-1 p-4">
-        {channel.description && (
-          <p className="text-sm text-zinc-500 mb-4">{channel.description}</p>
-        )}
-        {/* Message list will go here */}
-      </div>
+      <MessageList
+        channelId={channel.id}
+        initialMessages={channel.messages}
+      />
+      <MessageInput
+        channelId={channel.id}
+      />
     </div>
   );
 } 

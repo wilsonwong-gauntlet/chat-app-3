@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useModal } from "@/hooks/use-modal-store";
+import { useWorkspace } from "@/providers/workspace-provider";
 import {
   Form,
   FormControl,
@@ -48,6 +49,7 @@ const formSchema = z.object({
 
 export function CreateChannelModal() {
   const { isOpen, onClose, type, data } = useModal();
+  const { refresh } = useWorkspace();
   const router = useRouter();
   const [isLoading, setIsLoading] = React.useState(false);
 
@@ -83,10 +85,16 @@ export function CreateChannelModal() {
       }
 
       const channel = await response.json();
+      
+      // First refresh the workspace data
+      await refresh();
+      
+      // Then reset form and close modal
       form.reset();
-      router.refresh();
-      router.push(`/workspaces/${data.workspaceId}/channels/${channel.id}`);
       onClose();
+      
+      // Finally navigate
+      router.push(`/workspaces/${data.workspaceId}/channels/${channel.id}`);
     } catch (error) {
       console.error(error);
     } finally {
