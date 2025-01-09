@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 
 import { db } from "@/lib/db";
 import { WorkspaceProvider } from "@/providers/workspace-provider";
-import { WorkspaceSidebar } from "@/components/workspace/workspace-sidebar";
+import { WorkspaceSidebarServer } from "@/components/workspace/workspace-sidebar-server";
 
 async function getWorkspace(workspaceId: string, userId: string) {
   // First get the database user
@@ -108,11 +108,11 @@ export default async function WorkspaceLayout({
 
   return (
     <WorkspaceProvider initialWorkspace={workspace}>
-      <div className="h-full">
-        <div className="hidden md:flex h-full w-60 z-30 flex-col fixed inset-y-0 md:pl-[72px]">
-          <WorkspaceSidebar />
+      <div className="flex h-full">
+        <div className="hidden md:flex w-60 z-20 flex-col fixed inset-y-0 left-[72px]">
+          <WorkspaceSidebarServer workspaceId={params.workspaceId} />
         </div>
-        <main className="h-full md:pl-[calc(72px+240px)]">
+        <main className="flex-1 h-full pl-[332px]">
           {children}
         </main>
       </div>

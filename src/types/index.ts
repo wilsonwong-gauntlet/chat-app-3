@@ -1,61 +1,28 @@
-import { Prisma } from "@prisma/client";
+import type { Channel, User, Message, Workspace, WorkspaceMember, ChannelMember } from ".prisma/client";
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  imageUrl: string | null;
-}
+export type { Channel, User, Message, Workspace, WorkspaceMember, ChannelMember };
 
-interface Channel {
-  id: string;
-  name: string;
-  description: string | null;
-  type: "PUBLIC" | "PRIVATE" | "DIRECT";
-  workspaceId: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-interface ChannelMember {
-  id: string;
-  channelId: string;
-  userId: string;
-  user: User;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-interface WorkspaceMember {
-  id: string;
-  role: "ADMIN" | "MEMBER" | "GUEST";
-  userId: string;
-  workspaceId: string;
-  user: User;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface WorkspaceWithRelations {
-  id: string;
-  name: string;
-  createdAt: Date;
-  updatedAt: Date;
-  members: WorkspaceMember[];
+export interface WorkspaceWithRelations extends Workspace {
+  members: (WorkspaceMember & {
+    user: {
+      id: string;
+      name: string;
+      email: string;
+      imageUrl: string | null;
+    }
+  })[];
   channels: (Channel & {
-    members: ChannelMember[];
+    members: (ChannelMember & {
+      user: {
+        id: string;
+        name: string;
+        imageUrl: string | null;
+      }
+    })[];
   })[];
 }
 
-export interface MessageWithUser {
-  id: string;
-  content: string;
-  fileUrl: string | null;
-  channelId: string;
-  userId: string;
-  parentId: string | null;
-  createdAt: Date;
-  updatedAt: Date;
+export interface MessageWithUser extends Message {
   user: User;
   channel: Channel;
   replies?: MessageWithUser[];
