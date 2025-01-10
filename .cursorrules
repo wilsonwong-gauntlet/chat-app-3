@@ -1,0 +1,93 @@
+The root folder is "slack-clone". This is the main project folder. Before you generate code, please ensure that you are in the correct folder.
+
+Real-Time Messaging Platform PRD
+Product Overview
+A modern Slack clone, designed with Next.js and emphasizing real-time communication. The platform will deliver core messaging features with a robust foundation for AI integration, ensuring scalability, security, and extensibility. It will provide a seamless user experience with thoughtful design and performance optimization.
+
+Technical Stack
+Framework: Next.js with App Router for server-side rendering and routing.
+Database: PostgreSQL on AWS RDS, managed via Prisma ORM for type-safe database access.
+Authentication: Clerk for streamlined user management and authentication.
+Real-time Communication: Pusher for WebSocket-based real-time updates.
+Deployment: AWS Elastic Beanstalk for hosting and scalable deployment.
+Core Features & Implementation
+1. User Management
+Authentication & Authorization:
+
+User registration and login using Clerk.
+Workspace invitation system for onboarding.
+Role-based access control (Admin, Member, Guest).
+Secure session management.
+Profile & Workspace Management:
+
+User profile customization (status, avatar, etc.).
+Organization and workspace creation with admin controls.
+2. Messaging System
+Real-Time Chat Features:
+
+One-to-one direct messages.
+Channel-based group conversations.
+Thread replies for organized discussions.
+Read receipts, typing indicators, and online/offline status.
+Message editing, deletion, and markdown support.
+Message Types:
+
+Plain text, file attachments, and code snippets with syntax highlighting.
+Emoji reactions and link previews for a richer communication experience.
+3. Channel Management
+Channel Types:
+
+Public and private channels.
+Direct message groups.
+Thread-based discussions for specific topics.
+Channel Operations:
+
+Create, delete, and manage channels.
+Control member permissions and settings.
+Comprehensive channel search and discovery features.
+4. Search & History
+Search Features:
+
+Full-text search across messages, files, and users.
+Advanced filters for channels and date ranges.
+History Management:
+
+Persistent message history with infinite scroll.
+Backup and restore system for all communication data.
+Technical Architecture
+Frontend
+UI Design: Tailwind CSS for styling and shadcn/ui for accessible components.
+State Management: React Context for local UI state, and React Query for server state synchronization.
+Backend
+API Layer:
+
+Next.js API routes for CRUD operations.
+WebSocket-based real-time messaging via Pusher.
+Database Schema:
+
+Tables for users, workspaces, channels, messages, and reactions.
+Indexed columns to optimize search and query performance.
+AWS Infrastructure
+Core Services:
+
+Elastic Beanstalk for scalable hosting.
+RDS for PostgreSQL with automated backups.
+S3 for secure file storage, integrated with CloudFront for CDN delivery.
+Route 53 for domain management.
+Monitoring:
+
+CloudWatch for performance metrics and health monitoring.
+Alerts for downtime or performance bottlenecks.
+Development Phases
+Phase 1: Core Infrastructure
+Setup of Next.js with Clerk authentication and PostgreSQL database.
+Deployment of basic AWS infrastructure.
+Phase 2: Basic Messaging
+Implement real-time messaging and channel system.
+Develop persistent messaging storage and a basic UI.
+Phase 3: Advanced Features
+File uploads, message reactions, and thread support.
+Build search functionality and optimize the UI/UX.
+Phase 4: Polish & Scale
+Add caching, rate limiting, and performance optimizations.
+Implement advanced monitoring and analytics.

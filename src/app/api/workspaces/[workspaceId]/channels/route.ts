@@ -8,7 +8,7 @@ import { ChannelType } from "@/types";
 const createChannelSchema = z.object({
   name: z.string()
     .min(1, { message: "Channel name is required" })
-    .max(32, { message: "Channel name cannot be longer than 32 characters" })
+    .max(64, { message: "Channel name cannot be longer than 64 characters" })
     .regex(/^[a-z0-9-]+$/, {
       message: "Channel name can only contain lowercase letters, numbers, and hyphens"
     }),
