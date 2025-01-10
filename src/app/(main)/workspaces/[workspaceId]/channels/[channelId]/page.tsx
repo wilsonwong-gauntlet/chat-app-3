@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { MessageList } from "@/components/chat/message-list";
 import { MessageInput } from "@/components/chat/message-input";
+import { ChannelMember } from "@/types";
 
 async function getChannel(channelId: string, userId: string) {
   // First get the database user
@@ -35,7 +36,8 @@ async function getChannel(channelId: string, userId: string) {
             select: {
               id: true,
               name: true,
-              imageUrl: true
+              imageUrl: true,
+              clerkId: true
             }
           }
         }
@@ -85,15 +87,24 @@ async function getChannel(channelId: string, userId: string) {
 
   // For private channels, check if user is a member
   if (channel.type === "PRIVATE") {
-    const isMember = channel.members.some(member => member.userId === dbUser.id);
+    const isMember = channel.members.some((member: ChannelMember) => member.userId === dbUser.id);
     if (!isMember) {
       return null;
     }
   }
 
+  // For DM channels, get the other user's info
+  let otherUser = null;
+  if (channel.type === "DIRECT") {
+    otherUser = channel.members.find(
+      (member: ChannelMember) => member.user.clerkId !== userId
+    )?.user;
+  }
+
   return {
     ...channel,
-    messages: channel.messages.reverse()
+    messages: channel.messages.reverse(),
+    otherUser
   };
 }
 
@@ -118,12 +129,21 @@ export default async function ChannelPage({
     <div className="flex flex-col h-full">
       <div className="px-3 h-12 flex items-center border-b">
         <h2 className="text-md font-semibold flex items-center">
-          {channel.type === "PRIVATE" ? (
-            <span className="text-sm text-zinc-500 mr-2">🔒</span>
+          {channel.type === "DIRECT" ? (
+            <>
+              <span className="text-sm text-zinc-500 mr-2">@</span>
+              {channel.otherUser?.name || "Unknown User"}
+            </>
           ) : (
-            <span className="text-sm text-zinc-500 mr-2">#</span>
+            <>
+              {channel.type === "PRIVATE" ? (
+                <span className="text-sm text-zinc-500 mr-2">🔒</span>
+              ) : (
+                <span className="text-sm text-zinc-500 mr-2">#</span>
+              )}
+              {channel.name}
+            </>
           )}
-          {channel.name}
         </h2>
       </div>
       <MessageList

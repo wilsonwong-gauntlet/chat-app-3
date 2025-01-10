@@ -1,36 +1,3 @@
-import type { Channel, User, Message, Workspace, WorkspaceMember, ChannelMember } from ".prisma/client";
-
-export type { Channel, User, Message, Workspace, WorkspaceMember, ChannelMember };
-
-export interface WorkspaceWithRelations extends Workspace {
-  members: (WorkspaceMember & {
-    user: {
-      id: string;
-      name: string;
-      email: string;
-      imageUrl: string | null;
-    }
-  })[];
-  channels: (Channel & {
-    members: (ChannelMember & {
-      user: {
-        id: string;
-        name: string;
-        imageUrl: string | null;
-      }
-    })[];
-  })[];
-}
-
-export interface MessageWithUser extends Message {
-  user: User;
-  channel: Channel;
-  replies?: MessageWithUser[];
-  _count?: {
-    replies: number;
-  }
-}
-
 export interface User {
   id: string;
   clerkId: string;
@@ -47,12 +14,49 @@ export interface Channel {
   workspaceId: string;
   createdAt: Date;
   updatedAt: Date;
+  members?: ChannelMember[];
+  workspace?: Workspace;
+  otherUser?: User;
+}
+
+export interface ChannelMember {
+  id: string;
+  userId: string;
+  channelId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  user: User;
+}
+
+export interface Workspace {
+  id: string;
+  name: string;
+  createdAt: Date;
+  updatedAt: Date;
+  members: WorkspaceMember[];
+  channels: Channel[];
+}
+
+export interface WorkspaceMember {
+  id: string;
+  userId: string;
+  workspaceId: string;
+  role: MemberRole;
+  createdAt: Date;
+  updatedAt: Date;
+  user: User;
 }
 
 export enum ChannelType {
   PUBLIC = "PUBLIC",
   PRIVATE = "PRIVATE",
   DIRECT = "DIRECT"
+}
+
+export enum MemberRole {
+  ADMIN = "ADMIN",
+  MEMBER = "MEMBER",
+  GUEST = "GUEST"
 }
 
 export interface Message {
@@ -65,7 +69,20 @@ export interface Message {
   createdAt: Date;
   updatedAt: Date;
   user: User;
+  channel: Channel;
+  replies?: Message[];
   _count?: {
     replies: number;
   };
+}
+
+export interface WorkspaceWithRelations extends Workspace {
+  members: (WorkspaceMember & {
+    user: User;
+  })[];
+  channels: (Channel & {
+    members: (ChannelMember & {
+      user: User;
+    })[];
+  })[];
 } 
