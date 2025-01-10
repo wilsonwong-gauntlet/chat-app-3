@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { WorkspaceNameForm } from "@/components/workspace/workspace-name-form";
 import { AddMemberForm } from "@/components/workspace/add-member-form";
+import { WorkspaceMember, MemberRole } from "@/types";
 
 async function getWorkspace(workspaceId: string, userId: string) {
   const workspace = await db.workspace.findUnique({
@@ -26,15 +27,18 @@ async function getWorkspace(workspaceId: string, userId: string) {
     return null;
   }
 
-  // Check if user is a member
-  const member = workspace.members.find(member => member.user.clerkId === userId);
+  // Check if user is a member and an admin
+  const member = workspace.members.find(
+    (member: WorkspaceMember) => member.user.clerkId === userId
+  );
+
   if (!member) {
     return null;
   }
 
   return {
     ...workspace,
-    isAdmin: member.role === "ADMIN"
+    isAdmin: member.role === MemberRole.ADMIN
   };
 }
 
@@ -49,7 +53,9 @@ export default async function WorkspaceSettingsPage({
     redirect("/sign-in");
   }
 
-  const workspace = await getWorkspace(params.workspaceId, userId);
+  // Decode the workspace ID from the URL
+  const decodedWorkspaceId = decodeURIComponent(params.workspaceId);
+  const workspace = await getWorkspace(decodedWorkspaceId, userId);
 
   if (!workspace) {
     redirect("/workspaces");
@@ -57,7 +63,7 @@ export default async function WorkspaceSettingsPage({
 
   // Only admins can access settings
   if (!workspace.isAdmin) {
-    redirect(`/workspaces/${params.workspaceId}`);
+    redirect(`/workspaces/${decodedWorkspaceId}`);
   }
 
   return (
@@ -79,7 +85,7 @@ export default async function WorkspaceSettingsPage({
               <div className="mt-6">
                 <h4 className="text-sm font-medium mb-2">Current Members</h4>
                 <div className="space-y-2">
-                  {workspace.members.map((member) => (
+                  {workspace.members.map((member: WorkspaceMember) => (
                     <div
                       key={member.id}
                       className="flex items-center justify-between p-2 rounded-md bg-zinc-100 dark:bg-zinc-800"

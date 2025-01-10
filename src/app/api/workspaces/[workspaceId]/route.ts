@@ -44,11 +44,15 @@ export async function GET(
             user: {
               select: {
                 id: true,
+                clerkId: true,
                 name: true,
                 imageUrl: true,
                 email: true
               }
             }
+          },
+          orderBy: {
+            role: "asc"
           }
         },
         channels: {
@@ -70,8 +74,10 @@ export async function GET(
                 user: {
                   select: {
                     id: true,
+                    clerkId: true,
                     name: true,
-                    imageUrl: true
+                    imageUrl: true,
+                    email: true
                   }
                 }
               }
