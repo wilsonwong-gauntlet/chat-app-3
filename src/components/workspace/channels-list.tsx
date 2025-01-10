@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useModal } from "@/hooks/use-modal-store";
 import { Channel, ChannelType } from "@/types";
+import { useWorkspace } from "@/providers/workspace-provider";
 
 interface ChannelsListProps {
   channels: Channel[];
@@ -16,10 +17,16 @@ interface ChannelsListProps {
 export function ChannelsList({ channels }: ChannelsListProps) {
   const params = useParams();
   const { onOpen } = useModal();
+  const { workspace } = useWorkspace();
 
   const regularChannels = channels.filter(
     channel => channel.type !== ChannelType.DIRECT
   );
+
+  const handleCreateChannel = () => {
+    if (!workspace) return;
+    onOpen("createChannel", { workspaceId: workspace.id });
+  };
 
   return (
     <div>
@@ -28,7 +35,7 @@ export function ChannelsList({ channels }: ChannelsListProps) {
           Channels
         </h2>
         <Button
-          onClick={() => onOpen("createChannel")}
+          onClick={handleCreateChannel}
           size="icon"
           variant="ghost"
           className="h-4 w-4 mr-2"
