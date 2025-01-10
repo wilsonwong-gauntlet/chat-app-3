@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useParams } from "next/navigation";
-import { Channel, ChannelMember, Workspace, WorkspaceWithRelations } from "@/types";
+import { useAuth } from "@clerk/nextjs";
+import { Channel, ChannelType, ChannelMember, Workspace, WorkspaceWithRelations } from "@/types";
 import { pusherClient } from "@/lib/pusher";
 
 interface WorkspaceProviderProps {
@@ -45,6 +46,7 @@ const WorkspaceContext = React.createContext<WorkspaceContextType>({
 
 export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const params = useParams();
+  const { userId } = useAuth();
   const workspaceId = params.workspaceId as string;
 
   const [workspace, setWorkspace] = React.useState<WorkspaceWithRelations | null>(null);
@@ -54,7 +56,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
 
   const refresh = React.useCallback(async () => {
     try {
-      if (!workspaceId) return;
+      if (!workspaceId || !userId) return;
 
       const response = await fetch(`/api/workspaces/${workspaceId}`);
       const data = await response.json();
@@ -63,9 +65,19 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
         throw new Error(data.error || "Failed to fetch workspace");
       }
 
+      // Filter out any private channels where the user is not a member
+      const filteredChannels = data.channels.filter((channel: Channel & { members: ChannelMember[] }) => {
+        if (channel.type === ChannelType.PRIVATE) {
+          return channel.members.some((member) => 
+            member.user.clerkId === userId
+          );
+        }
+        return true;
+      });
+
       // The API returns the workspace object directly with members and channels
       setWorkspace(data);
-      setChannels(data.channels);
+      setChannels(filteredChannels);
       setMembers(data.members);
     } catch (error) {
       console.error("Error fetching workspace:", error);
@@ -76,7 +88,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [workspaceId]);
+  }, [workspaceId, userId]);
 
   React.useEffect(() => {
     refresh();
@@ -103,6 +115,12 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
         };
       })[];
     }) => {
+      if (newChannel.type === ChannelType.PRIVATE) {
+        const isUserMember = newChannel.members.some(
+          (member) => member.user.clerkId === userId
+        );
+        if (!isUserMember) return;
+      }
       setChannels((prev) => prev ? [...prev, newChannel] : [newChannel]);
     });
 

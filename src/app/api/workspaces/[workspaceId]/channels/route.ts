@@ -106,14 +106,36 @@ export async function POST(
       },
     });
 
+    // Fetch the updated channel with the creator as member
+    const updatedChannel = await db.channel.findUnique({
+      where: {
+        id: channel.id
+      },
+      include: {
+        members: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                imageUrl: true,
+                clerkId: true,
+              }
+            }
+          }
+        }
+      }
+    });
+
     // Notify workspace members of the new channel
     await pusherServer.trigger(
       workspaceId,
       "channel:create",
-      channel
+      updatedChannel
     );
 
-    return new NextResponse(JSON.stringify(channel));
+    return new NextResponse(JSON.stringify(updatedChannel));
   } catch (error) {
     console.error("[CHANNELS_POST]", error);
     if (error instanceof z.ZodError) {

@@ -58,8 +58,23 @@ export async function GET(
         channels: {
           where: {
             OR: [
-              { type: "PUBLIC" },
               {
+                type: "PUBLIC"
+              },
+              {
+                AND: [
+                  { type: "PRIVATE" },
+                  {
+                    members: {
+                      some: {
+                        userId: dbUser.id
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                type: "DIRECT",
                 members: {
                   some: {
                     userId: dbUser.id

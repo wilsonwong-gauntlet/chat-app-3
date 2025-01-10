@@ -3,6 +3,7 @@
 import { Lock, Plus, Settings } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -28,9 +29,21 @@ export function ChannelsList({ channels }: ChannelsListProps) {
   const params = useParams();
   const { onOpen } = useModal();
   const { workspace } = useWorkspace();
+  const { user } = useUser();
 
   const regularChannels = channels.filter(
-    channel => channel.type !== ChannelType.DIRECT
+    channel => {
+      // Filter out direct messages
+      if (channel.type === ChannelType.DIRECT) return false;
+      
+      // For private channels, only show if user is a member
+      if (channel.type === ChannelType.PRIVATE) {
+        return channel.members.some(member => member.user.clerkId === user?.id);
+      }
+      
+      // Show all public channels
+      return true;
+    }
   );
 
   const handleCreateChannel = () => {
