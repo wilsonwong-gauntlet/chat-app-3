@@ -1,74 +1,47 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Message, User, Channel } from "@prisma/client";
-import { useUser } from "@clerk/nextjs";
-import { Edit2, MessageCircle, Trash2, X, Check, SmilePlus, Reply, FileIcon } from "lucide-react";
+import { useState } from "react";
 import { format } from "date-fns";
-import Image from "next/image";
-import { pusherClient } from "@/lib/pusher";
-import data from "@emoji-mart/data";
-import Picker from "@emoji-mart/react";
-
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 import { MessageWithUser } from "@/types";
-import { Markdown } from "@/components/markdown";
-import { MessageReactions } from "@/components/message-reactions";
-import { getFileType } from "@/lib/s3";
+import { SmilePlus, Reply, Edit2, Trash2, Check, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
+  TooltipProvider
 } from "@/components/ui/tooltip";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useUser } from "@clerk/nextjs";
+import data from "@emoji-mart/data";
+import Picker from "@emoji-mart/react";
 
 interface MessageItemProps {
   message: MessageWithUser;
-  isThread?: boolean;
   onThreadClick?: (message: MessageWithUser) => void;
+  isThread?: boolean;
 }
 
 export function MessageItem({
   message,
-  isThread,
-  onThreadClick
+  onThreadClick,
+  isThread = false
 }: MessageItemProps) {
   const { user } = useUser();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [replyCount, setReplyCount] = useState(message._count?.replies || 0);
-  const [isPickerOpen, setIsPickerOpen] = useState(false);
-
-  const isOwner = message.user.clerkId === user?.id;
-  const isEditing = editingId === message.id;
-  const showReplies = !isThread && replyCount > 0;
-
-  useEffect(() => {
-    if (isThread) return;
-
-    const channel = pusherClient.subscribe(message.channelId);
-    
-    const handleUpdate = (updatedMessage: MessageWithUser) => {
-      if (updatedMessage.id === message.id) {
-        setReplyCount(updatedMessage._count?.replies || 0);
-      }
-    };
-
-    channel.bind("message-update", handleUpdate);
-
-    return () => {
-      channel.unbind("message-update", handleUpdate);
-      pusherClient.unsubscribe(message.channelId);
-    };
-  }, [message.id, message.channelId, isThread]);
+  
+  const formatTimestamp = (date: Date) => {
+    return format(new Date(date), "p");
+  };
 
   const onEdit = async () => {
     try {
@@ -132,124 +105,103 @@ export function MessageItem({
     }
   };
 
-  const renderFileAttachment = () => {
-    if (!message.fileUrl) return null;
-
-    const fileType = getFileType(message.fileUrl);
-    const fileName = message.fileUrl.split("/").pop() || "file";
-
-    if (fileType === "image") {
-      return (
-        <div className="mt-2 relative aspect-video w-full max-w-md rounded-lg overflow-hidden border">
-          <Image
-            src={message.fileUrl}
-            alt={fileName}
-            fill
-            className="object-contain"
-          />
-        </div>
-      );
-    }
-
-    return (
-      <a
-        href={message.fileUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-2 flex items-center gap-x-2 p-2 rounded-md border hover:bg-accent w-fit"
-      >
-        <FileIcon className="h-4 w-4" />
-        <span className="text-sm text-muted-foreground">
-          {fileName}
-        </span>
-      </a>
-    );
-  };
+  const isOwner = message.user.clerkId === user?.id;
+  const isEditing = editingId === message.id;
 
   return (
-    <div className="group relative flex items-start gap-x-3 py-2 px-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 rounded-md">
-      <img
-        src={message.user.imageUrl || "/placeholder-avatar.png"}
-        alt={message.user.name}
-        className="h-8 w-8 rounded-full"
-      />
-      <div className="flex flex-col flex-1 min-w-0">
-        <div className="flex items-center gap-x-2">
-          <p className="font-medium text-sm hover:underline">
-            {message.user.name}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {format(new Date(message.createdAt), "p")}
-          </p>
-          {message.updatedAt !== message.createdAt && (
-            <p className="text-[10px] text-muted-foreground uppercase">
-              edited
+    <div className="group relative flex items-start gap-4 px-4 py-3 hover:bg-zinc-50 transition-colors">
+      <div className="flex-shrink-0">
+        <Avatar className="h-8 w-8">
+          <AvatarImage src={message.user.imageUrl || ""} />
+          <AvatarFallback>
+            {message.user.name?.[0]?.toUpperCase() || "?"}
+          </AvatarFallback>
+        </Avatar>
+      </div>
+      <div className="flex-1 space-y-1">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium">
+              {message.user.name}
             </p>
+            <span className="text-xs text-zinc-500">
+              {formatTimestamp(message.createdAt)}
+            </span>
+          </div>
+          {message.updatedAt > message.createdAt && (
+            <span className="text-[10px] text-zinc-400">
+              (edited)
+            </span>
           )}
         </div>
-        {isEditing ? (
-          <div className="flex items-center gap-x-2 mt-2">
-            <Textarea
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              className="flex-1 resize-none p-2 h-[70px] min-w-0"
-              disabled={isLoading}
-              placeholder="Use markdown for formatting"
-            />
-            <div className="flex flex-col gap-y-2">
-              <Button
-                onClick={onEdit}
-                size="sm"
-                variant="ghost"
-                disabled={isLoading || !editContent.trim()}
-              >
-                <Check className="h-4 w-4" />
-              </Button>
-              <Button
-                onClick={() => {
-                  setEditingId(null);
-                  setEditContent("");
-                }}
-                size="sm"
-                variant="ghost"
+        <div className="space-y-1">
+          {isEditing ? (
+            <div className="flex items-center gap-2">
+              <Textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                className="flex-1 resize-none p-2 h-[70px] min-w-0 bg-zinc-50 border-zinc-200"
                 disabled={isLoading}
-              >
-                <X className="h-4 w-4" />
-              </Button>
+                placeholder="Edit your message..."
+              />
+              <div className="flex flex-col gap-2">
+                <Button
+                  onClick={onEdit}
+                  size="sm"
+                  variant="ghost"
+                  disabled={isLoading || !editContent.trim()}
+                  className="h-7 w-7 text-zinc-500 hover:text-zinc-600"
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button
+                  onClick={() => {
+                    setEditingId(null);
+                    setEditContent("");
+                  }}
+                  size="sm"
+                  variant="ghost"
+                  disabled={isLoading}
+                  className="h-7 w-7 text-zinc-500 hover:text-zinc-600"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div 
-            className="flex flex-col gap-y-1"
-            onClick={() => !isThread && onThreadClick?.(message)}
-          >
-            <Markdown 
-              content={message.content} 
-              className="text-sm break-words"
-            />
-            {renderFileAttachment()}
-            <MessageReactions
-              messageId={message.id}
-              channelId={message.channelId}
-            />
-            {showReplies && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onThreadClick?.(message);
-                }}
-                className="flex items-center gap-x-2 text-xs text-muted-foreground hover:text-primary transition w-fit mt-1"
-              >
-                <MessageCircle className="h-3 w-3" />
-                {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
-              </button>
-            )}
+          ) : (
+            <>
+              <div className="text-sm text-zinc-600 whitespace-pre-wrap">
+                {message.content}
+              </div>
+              {message.fileUrl && (
+                <a 
+                  href={message.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer" 
+                  className="text-sm text-blue-500 hover:underline"
+                >
+                  Attachment
+                </a>
+              )}
+            </>
+          )}
+        </div>
+        {!isThread && !isEditing && (
+          <div className="flex items-center gap-2 mt-2">
+            <Button
+              onClick={() => onThreadClick?.(message)}
+              size="sm"
+              variant="ghost"
+              className="text-xs text-zinc-500 hover:text-zinc-600"
+            >
+              {message._count?.replies || 0} replies
+            </Button>
           </div>
         )}
       </div>
       {!isEditing && (
         <TooltipProvider>
-          <div className="opacity-0 group-hover:opacity-100 absolute right-2 top-2 flex items-center gap-x-2 bg-background/95 py-1 px-1 rounded-md shadow-sm border">
+          <div className="opacity-0 group-hover:opacity-100 absolute right-4 top-2 flex items-center gap-1 bg-white shadow-sm border border-zinc-200 rounded-md py-1 px-1 transition-opacity">
             <Popover open={isPickerOpen} onOpenChange={setIsPickerOpen}>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -257,16 +209,15 @@ export function MessageItem({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                      }}
+                      className="h-7 w-7 text-zinc-500 hover:text-zinc-600"
                     >
                       <SmilePlus className="h-4 w-4" />
                     </Button>
                   </PopoverTrigger>
                 </TooltipTrigger>
-                <TooltipContent>Add reaction</TooltipContent>
+                <TooltipContent side="top" className="bg-white text-zinc-600">
+                  Add reaction
+                </TooltipContent>
               </Tooltip>
               <PopoverContent 
                 className="w-full p-0 border-none" 
@@ -286,18 +237,17 @@ export function MessageItem({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onThreadClick?.(message);
-                    }}
+                    onClick={() => onThreadClick?.(message)}
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7"
+                    className="h-7 w-7 text-zinc-500 hover:text-zinc-600"
                   >
                     <Reply className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Reply in thread</TooltipContent>
+                <TooltipContent side="top" className="bg-white text-zinc-600">
+                  Reply in thread
+                </TooltipContent>
               </Tooltip>
             )}
             {isOwner && (
@@ -305,37 +255,36 @@ export function MessageItem({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
-                      onClick={(e) => {
-                        e.stopPropagation();
+                      onClick={() => {
                         setEditingId(message.id);
                         setEditContent(message.content);
                       }}
-                      disabled={isLoading}
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
+                      className="h-7 w-7 text-zinc-500 hover:text-zinc-600"
                     >
                       <Edit2 className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Edit message</TooltipContent>
+                  <TooltipContent side="top" className="bg-white text-zinc-600">
+                    Edit message
+                  </TooltipContent>
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete();
-                      }}
+                      onClick={onDelete}
                       disabled={isLoading}
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
+                      className="h-7 w-7 text-zinc-500 hover:text-red-600"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Delete message</TooltipContent>
+                  <TooltipContent side="top" className="bg-white text-zinc-600">
+                    Delete message
+                  </TooltipContent>
                 </Tooltip>
               </>
             )}

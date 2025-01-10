@@ -69,9 +69,9 @@ export function MessageList({
 
   return (
     <div className="flex h-full">
-      <div className={`flex-1 ${activeThread ? 'border-r' : ''}`}>
+      <div className={`flex-1 ${activeThread ? 'border-r border-zinc-200' : ''}`}>
         <ScrollArea className="h-full">
-          <div className="flex-1 p-4 space-y-4">
+          <div className="flex-1 px-6 py-4 space-y-6">
             {messages.map((message) => (
               <MessageItem
                 key={message.id}
@@ -84,7 +84,7 @@ export function MessageList({
         </ScrollArea>
       </div>
       {activeThread && (
-        <div className="w-[400px] border-l dark:border-zinc-700 hidden md:block">
+        <div className="w-[400px] border-l border-zinc-200 hidden md:block bg-zinc-50/50">
           <ThreadView
             thread={activeThread}
             channelId={channelId}

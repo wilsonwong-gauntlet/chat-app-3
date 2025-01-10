@@ -76,6 +76,11 @@ export interface Message {
   };
 }
 
+export type MessageWithUser = Message & {
+  user: User;
+  replies?: MessageWithUser[];
+};
+
 export interface WorkspaceWithRelations extends Workspace {
   members: (WorkspaceMember & {
     user: User;

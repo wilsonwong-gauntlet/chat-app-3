@@ -112,30 +112,35 @@ export default async function ChannelPage({
   }
 
   return (
-    <div className="bg-white dark:bg-[#313338] flex flex-col h-full">
-      <div className="px-3 h-12 flex items-center border-b">
-        <h2 className="text-md font-semibold flex items-center">
-          {channel.type === ChannelType.DIRECT ? (
-            <>
-              <span className="text-sm text-zinc-500 mr-2">@</span>
-              {getOtherParticipantName(channel.members, userId)}
-            </>
-          ) : (
-            <>
-              {channel.type === ChannelType.PRIVATE ? (
-                <span className="text-sm text-zinc-500 mr-2">🔒</span>
-              ) : (
-                <span className="text-sm text-zinc-500 mr-2">#</span>
-              )}
-              {channel.name}
-            </>
-          )}
+    <div className="bg-white flex flex-col h-full">
+      <div className="px-6 h-14 flex items-center justify-between border-b border-zinc-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/50">
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-medium flex items-center">
+            {channel.type === ChannelType.DIRECT ? (
+              <>
+                <span className="text-zinc-400 mr-2">@</span>
+                {getOtherParticipantName(channel.members, userId)}
+              </>
+            ) : (
+              <>
+                {channel.type === ChannelType.PRIVATE ? (
+                  <span className="text-zinc-400 mr-2">🔒</span>
+                ) : (
+                  <span className="text-zinc-400 mr-2">#</span>
+                )}
+                {channel.name}
+              </>
+            )}
+          </h2>
           {channel.description && channel.type !== ChannelType.DIRECT && (
-            <span className="text-sm text-zinc-500 ml-2">
-              | {channel.description}
-            </span>
+            <>
+              <div className="h-4 w-[1px] bg-zinc-200" />
+              <span className="text-sm text-zinc-500">
+                {channel.description}
+              </span>
+            </>
           )}
-        </h2>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto">
         <MessageList
@@ -143,7 +148,7 @@ export default async function ChannelPage({
           initialMessages={channel.messages}
         />
       </div>
-      <div className="p-4 border-t">
+      <div className="mt-auto">
         <MessageInput
           channelId={channel.id}
         />

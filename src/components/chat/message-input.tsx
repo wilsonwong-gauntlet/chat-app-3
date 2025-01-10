@@ -118,40 +118,38 @@ export function MessageInput({
   };
 
   return (
-    <div className="p-4 border-t">
+    <div className="p-4 border-t border-zinc-200">
       <TooltipProvider>
         <div className={cn(
-          "relative flex flex-col rounded-lg border bg-background transition-shadow duration-200",
-          isFocused && "shadow-md"
+          "relative flex flex-col rounded-lg border border-zinc-200 bg-white transition-shadow duration-200",
+          isFocused && "shadow-[0_2px_12px_-3px_rgba(0,0,0,0.1),_0_2px_4px_-2px_rgba(0,0,0,0.05)]"
         )}>
-          <div className="flex items-center gap-0.5 border-b px-2 py-1">
+          <div className="flex items-center gap-0.5 border-b border-zinc-100 px-3 py-2">
             {formatButtons.map(({ icon: Icon, label, format, tooltip }) => (
               <Tooltip key={label}>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 w-7"
+                    className="h-8 w-8 text-zinc-600 hover:text-zinc-900"
                     onClick={() => handleFormat(format)}
                   >
                     <Icon className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top" align="center">
+                <TooltipContent side="top" align="center" className="bg-white text-zinc-600">
                   {tooltip}
                 </TooltipContent>
               </Tooltip>
             ))}
             <Dialog open={isAttachmentOpen} onOpenChange={setIsAttachmentOpen}>
               <DialogTrigger asChild>
-                <div
-                  className="h-7 w-7 ml-auto flex items-center justify-center rounded-md hover:bg-accent cursor-pointer"
-                >
+                <div className="h-8 w-8 ml-auto flex items-center justify-center rounded-md hover:bg-zinc-100 cursor-pointer">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Paperclip className="h-4 w-4" />
+                      <Paperclip className="h-4 w-4 text-zinc-600" />
                     </TooltipTrigger>
-                    <TooltipContent side="top">
+                    <TooltipContent side="top" className="bg-white text-zinc-600">
                       Attach file
                     </TooltipContent>
                   </Tooltip>
@@ -168,7 +166,7 @@ export function MessageInput({
               </DialogContent>
             </Dialog>
           </div>
-          <div className="relative flex items-center p-1">
+          <div className="relative flex items-center p-2">
             <Textarea
               ref={textareaRef}
               value={content}
@@ -198,7 +196,7 @@ export function MessageInput({
                   ? "Reply to thread..." 
                   : `Message ${parentId ? "thread" : "#channel"}`
               }
-              className="resize-none border-0 focus-visible:ring-0 bg-transparent px-2 py-1 min-h-[44px] max-h-[60vh] overflow-y-auto"
+              className="resize-none border-0 focus-visible:ring-0 bg-transparent px-2 py-1 min-h-[44px] max-h-[60vh] overflow-y-auto placeholder:text-zinc-400"
               disabled={isLoading}
             />
             <div className="flex items-center px-2">
@@ -208,11 +206,11 @@ export function MessageInput({
                 size="icon"
                 variant="ghost"
                 className={cn(
-                  "h-8 w-8 transition-opacity hover:bg-accent",
+                  "h-8 w-8 transition-opacity hover:bg-zinc-100",
                   (!content.trim() && !fileUrl) && "opacity-50"
                 )}
               >
-                <SendHorizontal className="h-4 w-4" />
+                <SendHorizontal className="h-4 w-4 text-zinc-600" />
               </Button>
             </div>
           </div>
