@@ -40,6 +40,7 @@ async function getWorkspace(workspaceId: string, userId: string) {
         where: {
           OR: [
             { type: "PUBLIC" },
+            { type: "DIRECT" },
             {
               members: {
                 some: {
@@ -56,7 +57,9 @@ async function getWorkspace(workspaceId: string, userId: string) {
                 select: {
                   id: true,
                   name: true,
-                  imageUrl: true
+                  imageUrl: true,
+                  clerkId: true,
+                  email: true
                 }
               }
             }

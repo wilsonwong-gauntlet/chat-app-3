@@ -2,99 +2,152 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MessageSquarePlus } from "lucide-react";
+import { useParams } from "next/navigation";
+import { Check, Loader2 } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
 
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { useModal } from "@/hooks/use-modal-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { WorkspaceWithRelations } from "@/types";
+import { User } from "@/types";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface StartDMDialogProps {
-  workspace: WorkspaceWithRelations;
+  members: {
+    user: User;
+  }[];
 }
 
-export function StartDMDialog({ workspace }: StartDMDialogProps) {
+export function StartDMDialog({ members }: StartDMDialogProps) {
   const router = useRouter();
+  const params = useParams();
+  const { user: currentUser } = useUser();
+  const { isOpen, onClose, type } = useModal();
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [open, setOpen] = useState(false);
 
-  const onMemberClick = async (userId: string) => {
+  const isModalOpen = isOpen && type === "startDM";
+
+  // Filter out the current user from the members list
+  const availableMembers = members.filter(
+    member => member.user.clerkId !== currentUser?.id
+  );
+
+  const onStartDM = async () => {
+    if (!selectedUser) return;
+
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/workspaces/${workspace.id}/direct-messages`, {
+      
+      // First check if a DM channel already exists
+      const response = await fetch(`/api/workspaces/${params.workspaceId}/channels?type=DIRECT&memberId=${selectedUser.id}`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to check existing DMs");
+      }
+      
+      const existingChannels = await response.json();
+
+      if (existingChannels.length > 0) {
+        // If DM exists, navigate to it
+        router.push(`/workspaces/${params.workspaceId}/channels/${existingChannels[0].id}`);
+        router.refresh();
+        onClose();
+        return;
+      }
+
+      // If no DM exists, create a new one with a unique name
+      const createResponse = await fetch(`/api/workspaces/${params.workspaceId}/channels`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({
+          name: `dm-${Date.now()}-${selectedUser.id}`,
+          type: "DIRECT",
+          memberIds: [selectedUser.id],
+        }),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to create DM");
+      if (!createResponse.ok) {
+        const error = await createResponse.json();
+        throw new Error(error.error || "Failed to create DM channel");
       }
 
-      const channel = await response.json();
-      router.push(`/workspaces/${workspace.id}/channels/${channel.id}`);
-      setOpen(false);
+      const channel = await createResponse.json();
+      router.push(`/workspaces/${params.workspaceId}/channels/${channel.id}`);
+      router.refresh();
+      onClose();
     } catch (error) {
-      console.error(error);
+      console.error("Failed to start DM:", error);
+      // Here you might want to show a toast notification to the user
     } finally {
       setIsLoading(false);
     }
   };
 
+  const onMemberClick = (member: { user: User }) => {
+    setSelectedUser(selectedUser?.id === member.user.id ? null : member.user);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="group flex w-full items-center gap-x-2 rounded-md p-2 text-zinc-400 hover:bg-zinc-700/10 dark:hover:bg-zinc-700/50"
-        >
-          <MessageSquarePlus className="h-4 w-4" />
-          <span className="line-clamp-1 font-semibold text-sm">
-            Start DM
-          </span>
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
+    <Dialog open={isModalOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Start a Direct Message</DialogTitle>
+          <DialogTitle>Start Direct Message</DialogTitle>
         </DialogHeader>
         <ScrollArea className="mt-4 max-h-[300px]">
-          <div className="space-y-2">
-            {workspace.members.map((member) => (
-              <Button
+          <div className="space-y-4">
+            {availableMembers.map((member) => (
+              <div
                 key={member.user.id}
-                variant="ghost"
-                disabled={isLoading}
-                onClick={() => onMemberClick(member.user.id)}
+                onClick={() => onMemberClick(member)}
                 className={cn(
-                  "w-full flex items-center gap-x-2 justify-start",
-                  isLoading && "opacity-50 cursor-not-allowed"
+                  "flex items-center gap-x-2 p-2 rounded-lg hover:bg-zinc-700/10 dark:hover:bg-zinc-700/50 cursor-pointer",
+                  selectedUser?.id === member.user.id && "bg-zinc-700/20 dark:bg-zinc-700"
                 )}
               >
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={member.user.imageUrl || ""} />
                   <AvatarFallback>
-                    {member.user.name?.[0]?.toUpperCase()}
+                    {member.user.name[0].toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className="line-clamp-1 text-sm font-medium">
-                  {member.user.name}
-                </span>
-              </Button>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{member.user.name}</p>
+                  <p className="text-xs text-muted-foreground">{member.user.email}</p>
+                </div>
+                {selectedUser?.id === member.user.id && (
+                  <Check className="h-4 w-4 text-primary ml-auto" />
+                )}
+              </div>
             ))}
           </div>
         </ScrollArea>
+        <div className="flex justify-end mt-4">
+          <button
+            onClick={onStartDM}
+            disabled={!selectedUser || isLoading}
+            className={cn(
+              "flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium text-white focus-visible:outline-none focus-visible:ring-2",
+              !selectedUser || isLoading
+                ? "bg-zinc-500 cursor-not-allowed"
+                : "bg-primary hover:bg-primary/90"
+            )}
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              "Start conversation"
+            )}
+          </button>
+        </div>
       </DialogContent>
     </Dialog>
   );

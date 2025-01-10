@@ -6,29 +6,29 @@ import { useParams } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { useModal } from "@/hooks/use-modal-store";
 import { Channel, ChannelType } from "@/types";
 
-interface DirectMessagesListProps {
+interface ChannelsListProps {
   channels: Channel[];
 }
 
-export function DirectMessagesList({ channels }: DirectMessagesListProps) {
+export function ChannelsList({ channels }: ChannelsListProps) {
   const params = useParams();
   const { onOpen } = useModal();
 
-  const dmChannels = channels.filter(channel => channel.type === ChannelType.DIRECT);
+  const regularChannels = channels.filter(
+    channel => channel.type !== ChannelType.DIRECT
+  );
 
   return (
-    <div className="mt-2">
-      <Separator className="my-2" />
+    <div>
       <div className="flex items-center justify-between py-2">
         <h2 className="text-sm font-semibold text-muted-foreground px-2">
-          Direct Messages
+          Channels
         </h2>
         <Button
-          onClick={() => onOpen("startDM")}
+          onClick={() => onOpen("createChannel")}
           size="icon"
           variant="ghost"
           className="h-4 w-4 mr-2"
@@ -37,7 +37,7 @@ export function DirectMessagesList({ channels }: DirectMessagesListProps) {
         </Button>
       </div>
       <ul className="space-y-[2px]">
-        {dmChannels.map((channel) => (
+        {regularChannels.map((channel) => (
           <li key={channel.id}>
             <Link
               href={`/workspaces/${params?.workspaceId}/channels/${channel.id}`}

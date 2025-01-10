@@ -29,4 +29,43 @@ export interface MessageWithUser extends Message {
   _count?: {
     replies: number;
   }
+}
+
+export interface User {
+  id: string;
+  clerkId: string;
+  email: string;
+  name: string;
+  imageUrl?: string | null;
+}
+
+export interface Channel {
+  id: string;
+  name: string;
+  description?: string | null;
+  type: ChannelType;
+  workspaceId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export enum ChannelType {
+  PUBLIC = "PUBLIC",
+  PRIVATE = "PRIVATE",
+  DIRECT = "DIRECT"
+}
+
+export interface Message {
+  id: string;
+  content: string;
+  fileUrl?: string | null;
+  channelId: string;
+  userId: string;
+  parentId?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  user: User;
+  _count?: {
+    replies: number;
+  };
 } 

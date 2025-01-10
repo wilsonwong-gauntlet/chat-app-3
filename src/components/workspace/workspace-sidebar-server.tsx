@@ -1,18 +1,25 @@
 import { redirect } from "next/navigation";
+import { auth } from "@clerk/nextjs/server";
 
-import { currentProfile } from "@/lib/current-profile";
 import { db } from "@/lib/db";
 import { WorkspaceSidebar } from "./workspace-sidebar";
+import { User } from "@/types";
 
 interface WorkspaceSidebarServerProps {
   workspaceId: string;
 }
 
-export async function WorkspaceSidebarServer({ workspaceId }: WorkspaceSidebarServerProps) {
-  const profile = await currentProfile();
+interface WorkspaceMember {
+  user: User;
+}
 
-  if (!profile) {
-    return redirect("/");
+export async function WorkspaceSidebarServer({
+  workspaceId,
+}: WorkspaceSidebarServerProps) {
+  const { userId } = await auth();
+
+  if (!userId) {
+    redirect("/sign-in");
   }
 
   const workspace = await db.workspace.findUnique({
@@ -21,32 +28,38 @@ export async function WorkspaceSidebarServer({ workspaceId }: WorkspaceSidebarSe
     },
     include: {
       channels: {
-        where: {
-          members: {
-            some: {
-              userId: profile.id
-            }
-          }
-        },
         include: {
           members: {
             include: {
-              user: true
-            }
-          }
-        }
+              user: true,
+            },
+          },
+        },
       },
       members: {
         include: {
-          user: true
-        }
-      }
-    }
+          user: true,
+        },
+      },
+    },
   });
 
   if (!workspace) {
-    return redirect("/");
+    redirect("/");
   }
 
-  return <WorkspaceSidebar workspace={workspace} />;
+  const member = workspace.members.find(
+    (member: WorkspaceMember) => member.user.clerkId === userId
+  );
+
+  if (!member) {
+    redirect("/");
+  }
+
+  return (
+    <WorkspaceSidebar
+      channels={workspace.channels}
+      members={workspace.members}
+    />
+  );
 } 

@@ -1,10 +1,10 @@
+import { Channel } from "@prisma/client";
 import { create } from "zustand";
 
-export type ModalType = "createWorkspace" | "workspaceSettings" | "createChannel" | "createDM" | "inviteMembers";
+export type ModalType = "createChannel" | "channelSettings" | "members" | "startDM";
 
 interface ModalData {
-  workspaceId?: string;
-  userId?: string;
+  channel?: Channel;
 }
 
 interface ModalStore {
