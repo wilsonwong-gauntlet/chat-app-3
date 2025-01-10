@@ -1,7 +1,7 @@
 import { Channel } from "@prisma/client";
 import { create } from "zustand";
 
-export type ModalType = "createChannel" | "channelSettings" | "members" | "startDM";
+export type ModalType = "createChannel" | "channelSettings" | "members" | "startDM" | "createWorkspace";
 
 interface ModalData {
   channel?: Channel;
