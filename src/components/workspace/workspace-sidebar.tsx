@@ -16,7 +16,7 @@ interface WorkspaceSidebarProps {
         id: string;
         name: string;
         email: string;
-        imageUrl?: string | null;
+        imageUrl: string | null;
         clerkId: string;
       };
     })[];
@@ -26,7 +26,7 @@ interface WorkspaceSidebarProps {
       id: string;
       name: string;
       email: string;
-      imageUrl?: string | null;
+      imageUrl: string | null;
       clerkId: string;
     };
   }[];

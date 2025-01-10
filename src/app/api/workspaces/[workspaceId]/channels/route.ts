@@ -3,338 +3,122 @@ import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
 
 import { db } from "@/lib/db";
-import { ChannelType } from "@/types";
+import { pusherServer } from "@/lib/pusher";
 
 const createChannelSchema = z.object({
   name: z.string()
-    .min(1, { message: "Channel name is required" })
-    .max(64, { message: "Channel name cannot be longer than 64 characters" })
+    .min(1, { message: "Channel name is required." })
+    .max(32, { message: "Channel name cannot be longer than 32 characters." })
     .regex(/^[a-z0-9-]+$/, {
-      message: "Channel name can only contain lowercase letters, numbers, and hyphens"
+      message: "Channel name can only contain lowercase letters, numbers, and hyphens."
     }),
-  type: z.enum(["PUBLIC", "PRIVATE", "DIRECT"]),
-  memberIds: z.array(z.string()).optional(),
+  type: z.enum(["PUBLIC", "PRIVATE"], {
+    required_error: "Channel type is required."
+  }),
+  description: z.string().optional()
 });
-
-export async function GET(
-  req: Request,
-  { params }: { params: { workspaceId: string } }
-) {
-  try {
-    const { userId } = await auth();
-    const { searchParams } = new URL(req.url);
-    
-    const type = searchParams.get("type") as ChannelType | null;
-    const memberId = searchParams.get("memberId");
-
-    if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-
-    // Get the database user
-    const dbUser = await db.user.findUnique({
-      where: { clerkId: userId }
-    });
-
-    if (!dbUser) {
-      return new NextResponse("User not found", { status: 404 });
-    }
-
-    // Base query to find channels in the workspace where user is a member
-    const baseQuery = {
-      workspaceId: params.workspaceId,
-      members: {
-        some: {
-          userId: dbUser.id
-        }
-      }
-    };
-
-    // If searching for DMs with a specific member
-    if (type === "DIRECT" && memberId) {
-      const channels = await db.channel.findMany({
-        where: {
-          ...baseQuery,
-          type: "DIRECT",
-          members: {
-            every: {
-              userId: {
-                in: [dbUser.id, memberId]
-              }
-            }
-          }
-        },
-        include: {
-          members: {
-            include: {
-              user: true
-            }
-          }
-        }
-      });
-      
-      return NextResponse.json(channels);
-    }
-
-    // Regular channel query with optional type filter
-    const channels = await db.channel.findMany({
-      where: {
-        ...baseQuery,
-        ...(type ? { type } : {})
-      },
-      include: {
-        members: {
-          include: {
-            user: true
-          }
-        }
-      }
-    });
-
-    return NextResponse.json(channels);
-  } catch (error) {
-    console.error("[CHANNELS_GET]", error);
-    return new NextResponse("Internal Error", { status: 500 });
-  }
-}
 
 export async function POST(
   req: Request,
   { params }: { params: { workspaceId: string } }
 ) {
   try {
-    const { userId } = await auth();
+    const { userId: clerkId } = await auth();
 
-    if (!userId) {
-      return new NextResponse(
-        JSON.stringify({ error: "Unauthorized" }),
-        { 
-          status: 401,
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
+    if (!clerkId) {
+      return new NextResponse("Unauthorized", { status: 401 });
     }
-
-    const body = await req.json();
-    console.log("[CHANNELS_POST] Request body:", body);
-
-    let validatedData;
-    try {
-      validatedData = createChannelSchema.parse(body);
-      console.log("[CHANNELS_POST] Parsed data:", validatedData);
-    } catch (error) {
-      console.error("[CHANNELS_POST] Validation error:", error);
-      return new NextResponse(
-        JSON.stringify({ 
-          error: "Invalid request data", 
-          details: error instanceof z.ZodError ? error.errors : error 
-        }),
-        { 
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
-    }
-
-    const { name, type, memberIds } = validatedData;
 
     // Get the database user
-    const dbUser = await db.user.findUnique({
-      where: { clerkId: userId },
-      select: {
-        id: true
-      }
+    const user = await db.user.findUnique({
+      where: { clerkId },
+      select: { id: true }
     });
 
-    if (!dbUser) {
-      return new NextResponse(
-        JSON.stringify({ error: "User not found" }),
-        { 
-          status: 404,
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
+    if (!user) {
+      return new NextResponse("User not found", { status: 404 });
     }
+
+    const workspaceId = params.workspaceId;
 
     // Check if user is a member of the workspace
-    const workspace = await db.workspace.findFirst({
+    const workspaceMember = await db.workspaceMember.findFirst({
       where: {
-        id: params.workspaceId,
-        members: {
-          some: {
-            userId: dbUser.id
-          }
-        }
-      }
+        workspaceId,
+        userId: user.id,
+      },
     });
 
-    if (!workspace) {
-      return new NextResponse(
-        JSON.stringify({ error: "Workspace not found" }),
-        { 
-          status: 404,
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
+    if (!workspaceMember) {
+      return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Check if channel name already exists in this workspace
+    const json = await req.json();
+    const body = createChannelSchema.parse(json);
+
+    // Check if channel name already exists in workspace
     const existingChannel = await db.channel.findFirst({
       where: {
-        name,
-        workspaceId: workspace.id
-      }
+        workspaceId,
+        name: body.name,
+      },
     });
 
     if (existingChannel) {
       return new NextResponse(
-        JSON.stringify({ 
-          error: "A channel with this name already exists in this workspace" 
+        JSON.stringify({
+          error: "A channel with this name already exists in this workspace."
         }),
-        { 
-          status: 409,
-          headers: { 'Content-Type': 'application/json' }
-        }
+        { status: 409 }
       );
     }
 
-    // For DM channels, verify the target member exists and is in the workspace
-    if (type === "DIRECT" && memberIds?.length === 1) {
-      console.log("[CHANNELS_POST] Checking DM prerequisites");
-      
-      // Prevent self-DMs
-      if (memberIds[0] === dbUser.id) {
-        return new NextResponse(
-          JSON.stringify({ error: "Cannot create DM with yourself" }),
-          { 
-            status: 400,
-            headers: { 'Content-Type': 'application/json' }
-          }
-        );
-      }
-      
-      const targetMember = await db.workspaceMember.findFirst({
-        where: {
-          workspaceId: workspace.id,
-          userId: memberIds[0]
-        }
-      });
-
-      if (!targetMember) {
-        return new NextResponse(
-          JSON.stringify({ error: "Target member not found in workspace" }),
-          { 
-            status: 404,
-            headers: { 'Content-Type': 'application/json' }
-          }
-        );
-      }
-
-      // Check if DM channel already exists
-      const existingDM = await db.channel.findFirst({
-        where: {
-          workspaceId: workspace.id,
-          type: "DIRECT",
-          AND: [
-            {
-              members: {
-                some: {
-                  userId: dbUser.id
-                }
-              }
-            },
-            {
-              members: {
-                some: {
-                  userId: memberIds[0]
-                }
-              }
-            }
-          ]
-        }
-      });
-
-      if (existingDM) {
-        return new NextResponse(
-          JSON.stringify({ error: "DM channel already exists", channel: existingDM }),
-          { 
-            status: 409,
-            headers: { 'Content-Type': 'application/json' }
-          }
-        );
-      }
-    }
-
-    console.log("[CHANNELS_POST] Creating channel with data:", {
-      name,
-      type,
-      workspaceId: workspace.id,
-      currentUserId: dbUser.id,
-      memberIds
-    });
-
+    // Create channel
     const channel = await db.channel.create({
       data: {
-        name,
-        type,
-        workspaceId: workspace.id,
-        members: {
-          create: [
-            // Always add the creator
-            {
-              userId: dbUser.id
-            },
-            // For DMs, add the target member
-            ...(type === "DIRECT" && memberIds?.length === 1
-              ? [{ userId: memberIds[0] }]
-              : []),
-            // For private channels, only add the creator (already done above)
-            // For public channels, no need to add members initially
-          ]
-        }
+        name: body.name,
+        type: body.type,
+        description: body.description,
+        workspaceId,
       },
       include: {
         members: {
           include: {
-            user: true
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                imageUrl: true,
+                clerkId: true,
+              }
+            }
           }
         }
       }
     });
 
-    return NextResponse.json(channel);
-  } catch (error) {
-    console.error("[CHANNELS_POST] Detailed error:", {
-      name: error instanceof Error ? error.name : "Unknown error",
-      message: error instanceof Error ? error.message : "Unknown error",
-      stack: error instanceof Error ? error.stack : undefined
+    // Add creator as member
+    await db.channelMember.create({
+      data: {
+        channelId: channel.id,
+        userId: user.id,
+      },
     });
-    
-    // Check for unique constraint violation in the error message
-    if (
-      error instanceof Error && 
-      error.message.includes('Unique constraint failed on the fields')
-    ) {
-      return new NextResponse(
-        JSON.stringify({ 
-          error: "A channel with this name already exists in this workspace" 
-        }),
-        { 
-          status: 409,
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
-    }
-    
-    return new NextResponse(
-      JSON.stringify({ 
-        error: "Internal Server Error",
-        details: error instanceof Error ? error.message : "Unknown error"
-      }),
-      { 
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      }
+
+    // Notify workspace members of the new channel
+    await pusherServer.trigger(
+      workspaceId,
+      "channel:create",
+      channel
     );
+
+    return new NextResponse(JSON.stringify(channel));
+  } catch (error) {
+    console.error("[CHANNELS_POST]", error);
+    if (error instanceof z.ZodError) {
+      return new NextResponse(JSON.stringify({ error: error.errors[0].message }), { status: 400 });
+    }
+    return new NextResponse("Internal Error", { status: 500 });
   }
 } 

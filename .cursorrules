@@ -1,3 +1,8 @@
+
+how to do auth:
+import { auth } from "@clerk/nextjs/server";
+const { userId } = await auth();
+
 The root folder is "slack-clone". This is the main project folder. Before you generate code, please ensure that you are in the correct folder.
 
 Real-Time Messaging Platform PRD

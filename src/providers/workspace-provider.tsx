@@ -1,112 +1,136 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import * as React from "react";
 import { useParams } from "next/navigation";
-
-import { WorkspaceWithRelations } from "@/types";
+import { Channel, ChannelMember, Workspace, WorkspaceWithRelations } from "@/types";
 import { pusherClient } from "@/lib/pusher";
 
-interface WorkspaceWithAdmin extends WorkspaceWithRelations {
-  isAdmin: boolean;
+interface WorkspaceProviderProps {
+  children: React.ReactNode;
 }
 
 interface WorkspaceContextType {
-  workspace: WorkspaceWithAdmin | null;
+  workspace: WorkspaceWithRelations | null;
+  channels: (Channel & {
+    members: (ChannelMember & {
+      user: {
+        id: string;
+        name: string;
+        email: string;
+        imageUrl: string | null;
+        clerkId: string;
+      };
+    })[];
+  })[] | null;
+  members: {
+    user: {
+      id: string;
+      name: string;
+      email: string;
+      imageUrl: string | null;
+      clerkId: string;
+    };
+  }[] | null;
   isLoading: boolean;
   refresh: () => Promise<void>;
 }
 
-const WorkspaceContext = createContext<WorkspaceContextType>({
+const WorkspaceContext = React.createContext<WorkspaceContextType>({
   workspace: null,
-  isLoading: false,
+  channels: null,
+  members: null,
+  isLoading: true,
   refresh: async () => {},
 });
 
-interface WorkspaceProviderProps {
-  children: React.ReactNode;
-  initialWorkspace: WorkspaceWithAdmin;
-}
-
-export function WorkspaceProvider({
-  children,
-  initialWorkspace
-}: WorkspaceProviderProps) {
+export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const params = useParams();
-  const [workspace, setWorkspace] = useState<WorkspaceWithAdmin>(initialWorkspace);
-  const [isLoading, setIsLoading] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const workspaceId = params.workspaceId as string;
 
-  const fetchWorkspace = useCallback(async () => {
+  const [workspace, setWorkspace] = React.useState<WorkspaceWithRelations | null>(null);
+  const [channels, setChannels] = React.useState<WorkspaceContextType["channels"]>(null);
+  const [members, setMembers] = React.useState<WorkspaceContextType["members"]>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  const refresh = React.useCallback(async () => {
     try {
-      if (!params?.workspaceId) {
-        return;
-      }
+      if (!workspaceId) return;
 
-      setIsLoading(true);
-      
-      const timestamp = Date.now();
-      const response = await fetch(`/api/workspaces/${params.workspaceId}?_=${timestamp}`, {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error("Failed to fetch workspace");
-      }
-
+      const response = await fetch(`/api/workspaces/${workspaceId}`);
       const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to fetch workspace");
+      }
+
+      // The API returns the workspace object directly with members and channels
       setWorkspace(data);
+      setChannels(data.channels);
+      setMembers(data.members);
     } catch (error) {
       console.error("Error fetching workspace:", error);
+      // On error, reset the state
+      setWorkspace(null);
+      setChannels(null);
+      setMembers(null);
     } finally {
       setIsLoading(false);
     }
-  }, [params?.workspaceId]);
+  }, [workspaceId]);
 
-  const refresh = useCallback(async () => {
-    setRefreshKey(k => k + 1);
-    await fetchWorkspace();
-  }, [fetchWorkspace]);
+  React.useEffect(() => {
+    refresh();
+  }, [refresh]);
 
-  // Fetch when workspaceId or refreshKey changes
-  useEffect(() => {
-    if (params?.workspaceId) {
-      fetchWorkspace();
-    }
-  }, [params?.workspaceId, refreshKey, fetchWorkspace]);
+  React.useEffect(() => {
+    if (!workspaceId) return;
 
-  // Subscribe to Pusher events for real-time updates
-  useEffect(() => {
-    if (!workspace?.id) return;
+    const channel = pusherClient.subscribe(workspaceId);
 
-    const channel = pusherClient.subscribe(workspace.id);
-    
     // Channel events
-    channel.bind('channel:update', refresh);
-    channel.bind('channel:delete', refresh);
-    channel.bind('channel:member_add', refresh);
-    channel.bind('channel:member_remove', refresh);
+    channel.bind("channel:update", refresh);
+    channel.bind("channel:delete", refresh);
+    channel.bind("channel:member_add", refresh);
+    channel.bind("channel:member_remove", refresh);
+    channel.bind("channel:create", (newChannel: Channel & {
+      members: (ChannelMember & {
+        user: {
+          id: string;
+          name: string;
+          email: string;
+          imageUrl: string | null;
+          clerkId: string;
+        };
+      })[];
+    }) => {
+      setChannels((prev) => prev ? [...prev, newChannel] : [newChannel]);
+    });
 
     return () => {
       channel.unbind_all();
-      pusherClient.unsubscribe(workspace.id);
+      pusherClient.unsubscribe(workspaceId);
     };
-  }, [workspace?.id, refresh]);
+  }, [workspaceId, refresh]);
 
   return (
-    <WorkspaceContext.Provider value={{ workspace, isLoading, refresh }}>
+    <WorkspaceContext.Provider
+      value={{
+        workspace,
+        channels,
+        members,
+        isLoading,
+        refresh,
+      }}
+    >
       {children}
     </WorkspaceContext.Provider>
   );
 }
 
-export const useWorkspace = () => {
-  const context = useContext(WorkspaceContext);
+export function useWorkspace() {
+  const context = React.useContext(WorkspaceContext);
   if (context === undefined) {
     throw new Error("useWorkspace must be used within a WorkspaceProvider");
   }
   return context;
-}; 
+} 
