@@ -1,13 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-
 import { Channel, ChannelMember, WorkspaceWithRelations } from "@/types";
 import { WorkspaceSidebar } from "./workspace-sidebar";
 import { useWorkspace } from "@/providers/workspace-provider";
 
-export function WorkspaceSidebarClient() {
+interface WorkspaceSidebarClientProps {
+  availableWorkspaces: {
+    id: string;
+    name: string;
+    createdAt: Date;
+    _count: {
+      members: number;
+      channels: number;
+    };
+  }[];
+}
+
+export function WorkspaceSidebarClient({
+  availableWorkspaces
+}: WorkspaceSidebarClientProps) {
   const { workspace, channels, members, isLoading } = useWorkspace();
 
   if (isLoading) {
@@ -29,5 +40,11 @@ export function WorkspaceSidebarClient() {
     return null;
   }
 
-  return <WorkspaceSidebar channels={channels} members={members} />;
+  return (
+    <WorkspaceSidebar 
+      channels={channels} 
+      members={members}
+      availableWorkspaces={availableWorkspaces}
+    />
+  );
 } 

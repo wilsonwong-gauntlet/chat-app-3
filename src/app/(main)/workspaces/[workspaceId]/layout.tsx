@@ -20,11 +20,38 @@ export default async function WorkspaceLayout({
     redirect("/sign-in");
   }
 
+  // Get all workspaces for the user
+  const workspaces = await db.workspace.findMany({
+    where: {
+      members: {
+        some: {
+          user: {
+            clerkId: userId
+          }
+        }
+      }
+    },
+    select: {
+      id: true,
+      name: true,
+      createdAt: true,
+      _count: {
+        select: {
+          members: true,
+          channels: true
+        }
+      }
+    },
+    orderBy: {
+      createdAt: 'desc'
+    }
+  });
+
   return (
     <WorkspaceProvider>
       <div className="flex h-full">
-        <div className="hidden md:flex w-60 z-20 flex-col fixed inset-y-0 left-[72px]">
-          <WorkspaceSidebarClient />
+        <div className="hidden md:flex w-60 z-20 flex-col fixed inset-y-0">
+          <WorkspaceSidebarClient availableWorkspaces={workspaces} />
         </div>
         <main className="flex-1 h-full pl-60">
           {children}

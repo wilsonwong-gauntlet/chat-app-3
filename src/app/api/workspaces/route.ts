@@ -8,6 +8,45 @@ const createWorkspaceSchema = z.object({
   name: z.string().min(1).max(32).regex(/^[a-zA-Z0-9-\s]+$/)
 });
 
+export async function GET() {
+  try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    // Get the user from our database
+    const dbUser = await db.user.findUnique({
+      where: { clerkId: userId }
+    });
+
+    if (!dbUser) {
+      return new NextResponse("User not found", { status: 404 });
+    }
+
+    // Get all workspaces where the user is a member
+    const workspaces = await db.workspace.findMany({
+      where: {
+        members: {
+          some: {
+            userId: dbUser.id
+          }
+        }
+      },
+      select: {
+        id: true,
+        name: true
+      }
+    });
+
+    return NextResponse.json(workspaces);
+  } catch (error) {
+    console.error("[WORKSPACES_GET]", error);
+    return new NextResponse("Internal Error", { status: 500 });
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const { userId } = await auth();

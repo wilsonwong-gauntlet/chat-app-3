@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { WorkspaceNameForm } from "@/components/workspace/workspace-name-form";
 import { AddMemberForm } from "@/components/workspace/add-member-form";
 import { WorkspaceMember, MemberRole } from "@/types";
+import { WorkspaceSwitcher } from "@/components/workspace/workspace-switcher";
 
 async function getWorkspace(workspaceId: string, userId: string) {
   const workspace = await db.workspace.findUnique({
@@ -53,6 +54,23 @@ export default async function WorkspaceSettingsPage({
     redirect("/sign-in");
   }
 
+  // Get all workspaces for the user
+  const workspaces = await db.workspace.findMany({
+    where: {
+      members: {
+        some: {
+          user: {
+            clerkId: userId
+          }
+        }
+      }
+    },
+    select: {
+      id: true,
+      name: true,
+    }
+  });
+
   // Decode the workspace ID from the URL
   const decodedWorkspaceId = decodeURIComponent(params.workspaceId);
   const workspace = await getWorkspace(decodedWorkspaceId, userId);
@@ -73,10 +91,18 @@ export default async function WorkspaceSettingsPage({
         <div className="space-y-4">
           <div className="p-4 rounded-lg bg-white dark:bg-zinc-900 border">
             <h3 className="text-xl font-semibold mb-4">General</h3>
-            <WorkspaceNameForm
-              workspaceId={workspace.id}
-              initialName={workspace.name}
-            />
+            <div className="space-y-4">
+              <WorkspaceNameForm
+                workspaceId={workspace.id}
+                initialName={workspace.name}
+              />
+              <div className="pt-4 border-t">
+                <WorkspaceSwitcher
+                  currentWorkspaceId={workspace.id}
+                  workspaces={workspaces}
+                />
+              </div>
+            </div>
           </div>
           <div className="p-4 rounded-lg bg-white dark:bg-zinc-900 border">
             <h3 className="text-xl font-semibold mb-4">Members</h3>
