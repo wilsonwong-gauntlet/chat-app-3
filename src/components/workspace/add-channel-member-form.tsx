@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Plus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -13,10 +13,12 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { useWorkspace } from "@/providers/workspace-provider";
 
 interface AddChannelMemberFormProps {
@@ -58,56 +60,50 @@ export function AddChannelMemberForm({ channelId }: AddChannelMemberFormProps) {
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
         <Button
           variant="outline"
-          role="combobox"
-          aria-expanded={open}
           className="w-full justify-between"
           disabled={isLoading}
         >
-          <span>Add members...</span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <span>Add members</span>
+          <Plus className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-full p-0">
-        <Command>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add Channel Members</DialogTitle>
+        </DialogHeader>
+        <Command className="rounded-lg border shadow-md">
           <CommandInput placeholder="Search members..." />
           <CommandEmpty>No members found.</CommandEmpty>
-          <CommandGroup>
+          <CommandGroup className="max-h-[300px] overflow-auto p-2">
             {workspaceMembers.map((member) => (
               <CommandItem
                 key={member.id}
-                value={member.user.name}
+                value={member.userId}
                 onSelect={() => onSelect(member.userId)}
+                className="flex items-center gap-x-2 px-2 py-1.5"
               >
-                <Check
-                  className={cn(
-                    "mr-2 h-4 w-4",
-                    "opacity-0"
-                  )}
+                <img
+                  src={member.user.imageUrl || "/placeholder-avatar.png"}
+                  alt={member.user.name}
+                  className="h-8 w-8 rounded-full"
                 />
-                <div className="flex items-center gap-x-2">
-                  <img
-                    src={member.user.imageUrl || "/placeholder-avatar.png"}
-                    alt={member.user.name}
-                    className="h-8 w-8 rounded-full"
-                  />
-                  <div className="flex flex-col">
-                    <p className="text-sm font-medium">
-                      {member.user.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {member.user.email}
-                    </p>
-                  </div>
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium">
+                    {member.user.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {member.user.email}
+                  </p>
                 </div>
               </CommandItem>
             ))}
           </CommandGroup>
         </Command>
-      </PopoverContent>
-    </Popover>
+      </DialogContent>
+    </Dialog>
   );
 } 
