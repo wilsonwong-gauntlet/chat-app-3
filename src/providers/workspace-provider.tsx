@@ -4,9 +4,14 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 import { useParams } from "next/navigation";
 
 import { WorkspaceWithRelations } from "@/types";
+import { pusherClient } from "@/lib/pusher";
+
+interface WorkspaceWithAdmin extends WorkspaceWithRelations {
+  isAdmin: boolean;
+}
 
 interface WorkspaceContextType {
-  workspace: WorkspaceWithRelations | null;
+  workspace: WorkspaceWithAdmin | null;
   isLoading: boolean;
   refresh: () => Promise<void>;
 }
@@ -19,7 +24,7 @@ const WorkspaceContext = createContext<WorkspaceContextType>({
 
 interface WorkspaceProviderProps {
   children: React.ReactNode;
-  initialWorkspace: WorkspaceWithRelations;
+  initialWorkspace: WorkspaceWithAdmin;
 }
 
 export function WorkspaceProvider({
@@ -27,7 +32,7 @@ export function WorkspaceProvider({
   initialWorkspace
 }: WorkspaceProviderProps) {
   const params = useParams();
-  const [workspace, setWorkspace] = useState<WorkspaceWithRelations>(initialWorkspace);
+  const [workspace, setWorkspace] = useState<WorkspaceWithAdmin>(initialWorkspace);
   const [isLoading, setIsLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -72,6 +77,24 @@ export function WorkspaceProvider({
       fetchWorkspace();
     }
   }, [params?.workspaceId, refreshKey, fetchWorkspace]);
+
+  // Subscribe to Pusher events for real-time updates
+  useEffect(() => {
+    if (!workspace?.id) return;
+
+    const channel = pusherClient.subscribe(workspace.id);
+    
+    // Channel events
+    channel.bind('channel:update', refresh);
+    channel.bind('channel:delete', refresh);
+    channel.bind('channel:member_add', refresh);
+    channel.bind('channel:member_remove', refresh);
+
+    return () => {
+      channel.unbind_all();
+      pusherClient.unsubscribe(workspace.id);
+    };
+  }, [workspace?.id, refresh]);
 
   return (
     <WorkspaceContext.Provider value={{ workspace, isLoading, refresh }}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Channel } from "@/types";
+import { Channel, ChannelMember } from "@/types";
 import { ChannelsList } from "./channels-list";
 import { DirectMessagesList } from "./direct-messages-list";
 import { StartDMDialog } from "./start-dm-dialog";
@@ -10,7 +10,17 @@ import Link from "next/link";
 import { useWorkspace } from "@/providers/workspace-provider";
 
 interface WorkspaceSidebarProps {
-  channels: Channel[];
+  channels: (Channel & {
+    members: (ChannelMember & {
+      user: {
+        id: string;
+        name: string;
+        email: string;
+        imageUrl?: string | null;
+        clerkId: string;
+      };
+    })[];
+  })[];
   members: {
     user: {
       id: string;

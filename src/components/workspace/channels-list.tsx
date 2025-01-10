@@ -7,12 +7,21 @@ import { useParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useModal } from "@/hooks/use-modal-store";
-import { Channel, ChannelType } from "@/types";
+import { Channel, ChannelType, ChannelMember } from "@/types";
 import { useWorkspace } from "@/providers/workspace-provider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ChannelsListProps {
-  channels: Channel[];
+  channels: (Channel & {
+    members: (ChannelMember & {
+      user: {
+        id: string;
+        name: string;
+        imageUrl: string | null;
+        clerkId: string;
+      };
+    })[];
+  })[];
 }
 
 export function ChannelsList({ channels }: ChannelsListProps) {
@@ -29,7 +38,16 @@ export function ChannelsList({ channels }: ChannelsListProps) {
     onOpen("createChannel", { workspaceId: workspace.id });
   };
 
-  const handleChannelSettings = (channel: Channel) => {
+  const handleChannelSettings = (channel: Channel & {
+    members: (ChannelMember & {
+      user: {
+        id: string;
+        name: string;
+        imageUrl: string | null;
+        clerkId: string;
+      };
+    })[];
+  }) => {
     onOpen("channelSettings", { channel });
   };
 
