@@ -41,13 +41,29 @@ async function getWorkspace(workspaceId: string, userId: string) {
         where: {
           OR: [
             { type: "PUBLIC" },
-            { type: "DIRECT" },
             {
-              members: {
-                some: {
-                  userId: dbUser.id
+              AND: [
+                { type: "PRIVATE" },
+                {
+                  members: {
+                    some: {
+                      userId: dbUser.id
+                    }
+                  }
                 }
-              }
+              ]
+            },
+            {
+              AND: [
+                { type: "DIRECT" },
+                {
+                  members: {
+                    some: {
+                      userId: dbUser.id
+                    }
+                  }
+                }
+              ]
             }
           ]
         },

@@ -5,6 +5,7 @@ import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
+import { AlertCircle } from "lucide-react";
 
 import {
   Dialog,
@@ -66,6 +67,8 @@ export function CreateChannelModal() {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
+      form.clearErrors();
+      
       if (!data.workspaceId) {
         throw new Error("No workspace ID provided");
       }
@@ -79,12 +82,18 @@ export function CreateChannelModal() {
         body: JSON.stringify(values),
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to create channel");
-      }
+      const responseData = await response.json();
 
-      const channel = await response.json();
+      if (!response.ok) {
+        if (response.status === 409) {
+          form.setError("name", {
+            type: "manual",
+            message: responseData.error
+          });
+          return;
+        }
+        throw new Error(responseData.error || "Failed to create channel");
+      }
       
       // First refresh the workspace data
       await refresh();
@@ -94,15 +103,20 @@ export function CreateChannelModal() {
       onClose();
       
       // Finally navigate
-      router.push(`/workspaces/${data.workspaceId}/channels/${channel.id}`);
+      router.push(`/workspaces/${data.workspaceId}/channels/${responseData.id}`);
     } catch (error) {
       console.error(error);
+      form.setError("root", {
+        type: "manual",
+        message: error instanceof Error ? error.message : "Something went wrong"
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleClose = () => {
+    form.clearErrors();
     form.reset();
     onClose();
   };
@@ -119,6 +133,12 @@ export function CreateChannelModal() {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <div className="px-6 space-y-4">
+              {form.formState.errors.root && (
+                <div className="p-3 rounded-md bg-destructive/15 text-destructive text-sm flex items-center gap-x-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <p>{form.formState.errors.root.message}</p>
+                </div>
+              )}
               <FormField
                 control={form.control}
                 name="name"
@@ -126,11 +146,17 @@ export function CreateChannelModal() {
                   <FormItem>
                     <FormLabel>Channel Name</FormLabel>
                     <FormControl>
-                      <Input
-                        disabled={isLoading}
-                        placeholder="e.g. marketing"
-                        {...field}
-                      />
+                      <div className="relative">
+                        <Input
+                          disabled={isLoading}
+                          placeholder="e.g. marketing"
+                          className={form.formState.errors.name ? "border-destructive focus-visible:ring-destructive" : ""}
+                          {...field}
+                        />
+                        {form.formState.errors.name && (
+                          <AlertCircle className="h-4 w-4 text-destructive absolute right-3 top-3" />
+                        )}
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

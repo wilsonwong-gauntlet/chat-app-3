@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { Lock, Plus } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useModal } from "@/hooks/use-modal-store";
 import { Channel, ChannelType } from "@/types";
 import { useWorkspace } from "@/providers/workspace-provider";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ChannelsListProps {
   channels: Channel[];
@@ -53,12 +54,31 @@ export function ChannelsList({ channels }: ChannelsListProps) {
                 params?.channelId === channel.id && "bg-zinc-700/20 dark:bg-zinc-700"
               )}
             >
-              <span className="text-zinc-500 dark:text-zinc-400 transition group-hover:text-zinc-600 dark:group-hover:text-zinc-300">
-                #
-              </span>
-              <span className="truncate text-sm text-zinc-500 dark:text-zinc-400 transition group-hover:text-zinc-600 dark:group-hover:text-zinc-300">
-                {channel.name}
-              </span>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="flex items-center gap-x-2">
+                      <span className="text-zinc-500 dark:text-zinc-400 transition group-hover:text-zinc-600 dark:group-hover:text-zinc-300">
+                        {channel.type === ChannelType.PRIVATE ? (
+                          <Lock className="h-3 w-3" />
+                        ) : (
+                          "#"
+                        )}
+                      </span>
+                      <span className="truncate text-sm text-zinc-500 dark:text-zinc-400 transition group-hover:text-zinc-600 dark:group-hover:text-zinc-300">
+                        {channel.name}
+                      </span>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    {channel.type === ChannelType.PRIVATE ? (
+                      <p>Private Channel - Only invited members can access</p>
+                    ) : (
+                      <p>Public Channel - Anyone in the workspace can join</p>
+                    )}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </Link>
           </li>
         ))}

@@ -6,7 +6,12 @@ import { db } from "@/lib/db";
 import { ChannelType } from "@/types";
 
 const createChannelSchema = z.object({
-  name: z.string().min(1),
+  name: z.string()
+    .min(1, { message: "Channel name is required" })
+    .max(32, { message: "Channel name cannot be longer than 32 characters" })
+    .regex(/^[a-z0-9-]+$/, {
+      message: "Channel name can only contain lowercase letters, numbers, and hyphens"
+    }),
   type: z.enum(["PUBLIC", "PRIVATE", "DIRECT"]),
   memberIds: z.array(z.string()).optional(),
 });
@@ -120,7 +125,10 @@ export async function POST(
     } catch (error) {
       console.error("[CHANNELS_POST] Validation error:", error);
       return new NextResponse(
-        JSON.stringify({ error: "Invalid request data", details: error }),
+        JSON.stringify({ 
+          error: "Invalid request data", 
+          details: error instanceof z.ZodError ? error.errors : error 
+        }),
         { 
           status: 400,
           headers: { 'Content-Type': 'application/json' }
@@ -165,6 +173,26 @@ export async function POST(
         JSON.stringify({ error: "Workspace not found" }),
         { 
           status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    // Check if channel name already exists in this workspace
+    const existingChannel = await db.channel.findFirst({
+      where: {
+        name,
+        workspaceId: workspace.id
+      }
+    });
+
+    if (existingChannel) {
+      return new NextResponse(
+        JSON.stringify({ 
+          error: "A channel with this name already exists in this workspace" 
+        }),
+        { 
+          status: 409,
           headers: { 'Content-Type': 'application/json' }
         }
       );
@@ -230,7 +258,7 @@ export async function POST(
         return new NextResponse(
           JSON.stringify({ error: "DM channel already exists", channel: existingDM }),
           { 
-            status: 400,
+            status: 409,
             headers: { 'Content-Type': 'application/json' }
           }
         );
@@ -252,10 +280,16 @@ export async function POST(
         workspaceId: workspace.id,
         members: {
           create: [
+            // Always add the creator
             {
               userId: dbUser.id
             },
-            ...(memberIds?.map(id => ({ userId: id })) || [])
+            // For DMs, add the target member
+            ...(type === "DIRECT" && memberIds?.length === 1
+              ? [{ userId: memberIds[0] }]
+              : []),
+            // For private channels, only add the creator (already done above)
+            // For public channels, no need to add members initially
           ]
         }
       },
@@ -275,6 +309,22 @@ export async function POST(
       message: error instanceof Error ? error.message : "Unknown error",
       stack: error instanceof Error ? error.stack : undefined
     });
+    
+    // Check for unique constraint violation in the error message
+    if (
+      error instanceof Error && 
+      error.message.includes('Unique constraint failed on the fields')
+    ) {
+      return new NextResponse(
+        JSON.stringify({ 
+          error: "A channel with this name already exists in this workspace" 
+        }),
+        { 
+          status: 409,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+    }
     
     return new NextResponse(
       JSON.stringify({ 
