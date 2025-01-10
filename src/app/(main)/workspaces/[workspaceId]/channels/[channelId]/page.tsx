@@ -72,11 +72,6 @@ async function getChannel(workspaceId: string, channelId: string, userId: string
   };
 }
 
-function getOtherParticipantName(members: ChannelMember[], currentUserId: string) {
-  const otherMember = members.find(member => member.user.clerkId !== currentUserId);
-  return otherMember?.user.name || 'Unknown User';
-}
-
 export default async function ChannelPage({
   params
 }: {
@@ -115,22 +110,13 @@ export default async function ChannelPage({
     <div className="bg-white dark:bg-[#313338] flex flex-col h-full">
       <div className="px-3 h-12 flex items-center border-b">
         <h2 className="text-md font-semibold flex items-center">
-          {channel.type === ChannelType.DIRECT ? (
-            <>
-              <span className="text-sm text-zinc-500 mr-2">@</span>
-              {getOtherParticipantName(channel.members, userId)}
-            </>
+          {channel.type === ChannelType.PRIVATE ? (
+            <span className="text-sm text-zinc-500 mr-2">🔒</span>
           ) : (
-            <>
-              {channel.type === ChannelType.PRIVATE ? (
-                <span className="text-sm text-zinc-500 mr-2">🔒</span>
-              ) : (
-                <span className="text-sm text-zinc-500 mr-2">#</span>
-              )}
-              {channel.name}
-            </>
+            <span className="text-sm text-zinc-500 mr-2">#</span>
           )}
-          {channel.description && channel.type !== ChannelType.DIRECT && (
+          {channel.name}
+          {channel.description && (
             <span className="text-sm text-zinc-500 ml-2">
               | {channel.description}
             </span>
