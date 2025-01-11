@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Slack Clone",
+  title: "Literally Slack",
   description: "A modern real-time messaging platform",
 }; 
