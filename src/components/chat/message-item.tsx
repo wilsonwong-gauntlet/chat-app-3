@@ -21,6 +21,7 @@ import {
 import { useUser } from "@clerk/nextjs";
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
+import { MessageReactions } from "@/components/message-reactions";
 
 interface MessageItemProps {
   message: MessageWithUser;
@@ -183,6 +184,10 @@ export function MessageItem({
                   Attachment
                 </a>
               )}
+              <MessageReactions
+                messageId={message.id}
+                channelId={message.channelId}
+              />
             </>
           )}
         </div>
