@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/current-user";
@@ -41,16 +42,16 @@ export async function POST(
     const body = await req.json();
     const { email } = addMemberSchema.parse(body);
 
-    // Find user by email
-    const memberToAdd = await db.user.findUnique({
+    // First check if user exists in our database
+    const dbUser = await db.user.findFirst({
       where: {
-        email
+        email: email
       }
     });
 
-    if (!memberToAdd) {
+    if (!dbUser) {
       return NextResponse.json(
-        { error: "User not found" },
+        { error: "No user found with this email. They need to sign up first." },
         { status: 404 }
       );
     }
@@ -59,7 +60,7 @@ export async function POST(
     const existingMember = await db.workspaceMember.findUnique({
       where: {
         userId_workspaceId: {
-          userId: memberToAdd.id,
+          userId: dbUser.id,
           workspaceId: workspace.id
         }
       }
@@ -75,7 +76,7 @@ export async function POST(
     // Add user to workspace
     const member = await db.workspaceMember.create({
       data: {
-        userId: memberToAdd.id,
+        userId: dbUser.id,
         workspaceId: workspace.id,
         role: "MEMBER"
       },
@@ -95,7 +96,7 @@ export async function POST(
     if (generalChannel) {
       await db.channelMember.create({
         data: {
-          userId: memberToAdd.id,
+          userId: dbUser.id,
           channelId: generalChannel.id
         }
       });
