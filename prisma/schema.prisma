@@ -19,9 +19,6 @@ model User {
   email         String    @unique
   name          String
   imageUrl      String?
-  lastSeen      DateTime?
-  status        UserStatus @default(OFFLINE)
-  statusMessage String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -140,11 +137,4 @@ enum ChannelType {
   PUBLIC
   PRIVATE
   DIRECT
-}
-
-enum UserStatus {
-  ONLINE
-  OFFLINE
-  AWAY
-  DO_NOT_DISTURB
 }
