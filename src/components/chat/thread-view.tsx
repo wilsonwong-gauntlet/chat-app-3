@@ -25,6 +25,7 @@ export function ThreadView({
   const [replies, setReplies] = useState<MessageWithUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const processedEvents = useRef(new Set<string>());
 
   // Fetch thread replies when opened
   useEffect(() => {
@@ -33,7 +34,11 @@ export function ThreadView({
         const response = await fetch(`/api/channels/${channelId}/messages/${thread.id}/replies`);
         if (response.ok) {
           const data = await response.json();
-          setReplies(data);
+          // Ensure unique messages
+          const uniqueReplies = new Map(
+            data.map((msg: MessageWithUser) => [msg.id, msg])
+          );
+          setReplies(Array.from(uniqueReplies.values()) as MessageWithUser[]);
         }
       } catch (error) {
         console.error("Failed to fetch replies:", error);
@@ -51,20 +56,30 @@ export function ThreadView({
     bottomRef?.current?.scrollIntoView();
 
     const messageHandler = (message: MessageWithUser) => {
+      const eventKey = `${threadChannel}:${message.id}:new`;
+      if (processedEvents.current.has(eventKey)) return;
+      processedEvents.current.add(eventKey);
+
       // Only handle messages that belong to this thread
       if (message.parentId === thread.id) {
         setReplies((current) => {
-          // Check if message already exists
           const exists = current.some(msg => msg.id === message.id);
           if (exists) return current;
           
-          return [...current, message];
+          const newReplies = [...current, message];
+          return newReplies.sort(
+            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
         });
         bottomRef?.current?.scrollIntoView();
       }
     };
 
     const updateHandler = (updatedMessage: MessageWithUser) => {
+      const eventKey = `${threadChannel}:${updatedMessage.id}:update`;
+      if (processedEvents.current.has(eventKey)) return;
+      processedEvents.current.add(eventKey);
+
       // Only handle updates for messages in this thread
       if (updatedMessage.parentId === thread.id) {
         setReplies((current) => 
@@ -76,6 +91,10 @@ export function ThreadView({
     };
 
     const deleteHandler = (messageId: string) => {
+      const eventKey = `${threadChannel}:${messageId}:delete`;
+      if (processedEvents.current.has(eventKey)) return;
+      processedEvents.current.add(eventKey);
+
       setReplies((current) => 
         current.filter((msg) => msg.id !== messageId)
       );
@@ -94,12 +113,13 @@ export function ThreadView({
       pusherClient.unbind("new-message", messageHandler);
       pusherClient.unbind("message-update", updateHandler);
       pusherClient.unbind("message-delete", deleteHandler);
+      processedEvents.current.clear();
     };
   }, [channelId, thread.id]);
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-4 h-14 flex items-center justify-between border-b">
+      <div className="px-4 h-14 flex items-center justify-between border-b dark:border-zinc-700">
         <div className="flex items-center gap-x-2">
           <MessageCircle className="h-5 w-5" />
           <div className="flex flex-col">
@@ -119,7 +139,7 @@ export function ThreadView({
       </div>
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
-          <div className="pb-4 border-b">
+          <div className="pb-4 border-b dark:border-zinc-700">
             <MessageItem
               message={thread}
               isThread
@@ -131,7 +151,7 @@ export function ThreadView({
           <div className="space-y-4">
             {replies.map((reply) => (
               <MessageItem
-                key={`${reply.id}-${reply.updatedAt}`}
+                key={`${thread.id}:${reply.id}`}
                 message={reply}
                 isThread
               />
@@ -140,7 +160,7 @@ export function ThreadView({
           <div ref={bottomRef} />
         </div>
       </ScrollArea>
-      <div className="p-4 border-t">
+      <div className="p-4 border-t dark:border-zinc-700">
         <MessageInput
           channelId={channelId}
           parentId={thread.id}

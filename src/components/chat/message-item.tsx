@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { MessageWithUser } from "@/types";
-import { SmilePlus, Reply, Edit2, Trash2, Check, X } from "lucide-react";
+import { SmilePlus, Reply, Edit2, Trash2, Check, X, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,6 +28,7 @@ import Picker from "@emoji-mart/react";
 import { MessageReactions } from "@/components/message-reactions";
 import { getFileType } from "@/lib/s3";
 import { cn } from "@/lib/utils";
+import { useTheme } from "next-themes";
 
 interface MessageItemProps {
   message: MessageWithUser;
@@ -45,6 +46,7 @@ export function MessageItem({
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
+  const { resolvedTheme } = useTheme();
   
   const formatTimestamp = (date: Date) => {
     return format(new Date(date), "p");
@@ -116,7 +118,7 @@ export function MessageItem({
   const isEditing = editingId === message.id;
 
   return (
-    <div className="group relative flex items-start gap-4 px-4 py-3 hover:bg-zinc-50 transition-colors">
+    <div className="group relative flex items-start gap-4 px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors">
       <div className="flex-shrink-0">
         <Avatar className="h-8 w-8">
           <AvatarImage src={message.user.imageUrl || ""} />
@@ -128,15 +130,15 @@ export function MessageItem({
       <div className="flex-1 space-y-1">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2">
-            <p className="text-sm font-medium">
+            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
               {message.user.name}
             </p>
-            <span className="text-xs text-zinc-500">
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">
               {formatTimestamp(message.createdAt)}
             </span>
           </div>
           {message.updatedAt > message.createdAt && (
-            <span className="text-[10px] text-zinc-400">
+            <span className="text-[10px] text-zinc-400 dark:text-zinc-500">
               (edited)
             </span>
           )}
@@ -147,7 +149,7 @@ export function MessageItem({
               <Textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
-                className="flex-1 resize-none p-2 h-[70px] min-w-0 bg-zinc-50 border-zinc-200"
+                className="flex-1 resize-none p-2 h-[70px] min-w-0 bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700"
                 disabled={isLoading}
                 placeholder="Edit your message..."
               />
@@ -157,7 +159,7 @@ export function MessageItem({
                   size="sm"
                   variant="ghost"
                   disabled={isLoading || !editContent.trim()}
-                  className="h-7 w-7 text-zinc-500 hover:text-zinc-600"
+                  className="h-7 w-7 text-zinc-500 hover:text-zinc-600 dark:text-zinc-400 dark:hover:text-zinc-300"
                 >
                   <Check className="h-4 w-4" />
                 </Button>
@@ -169,7 +171,7 @@ export function MessageItem({
                   size="sm"
                   variant="ghost"
                   disabled={isLoading}
-                  className="h-7 w-7 text-zinc-500 hover:text-zinc-600"
+                  className="h-7 w-7 text-zinc-500 hover:text-zinc-600 dark:text-zinc-400 dark:hover:text-zinc-300"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -177,10 +179,10 @@ export function MessageItem({
             </div>
           ) : (
             <>
-              <div className="text-sm text-zinc-600">
+              <div className="text-sm text-zinc-600 dark:text-zinc-300">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
-                  className="prose prose-sm dark:prose-invert prose-zinc max-w-none break-words [&_p]:leading-normal [&_p]:my-0 [&_pre]:my-0 [&_code]:px-1 [&_code]:py-0.5 [&_code]:bg-zinc-100 [&_code]:rounded-md [&_code]:text-sm [&_code]:font-mono"
+                  className="prose prose-sm dark:prose-invert prose-zinc max-w-none break-words [&_p]:leading-normal [&_p]:my-0 [&_pre]:my-0 [&_code]:px-1 [&_code]:py-0.5 [&_code]:bg-zinc-100 dark:bg-zinc-800 [&_code]:rounded-md [&_code]:text-sm [&_code]:font-mono"
                 >
                   {message.content}
                 </ReactMarkdown>
@@ -221,105 +223,128 @@ export function MessageItem({
               onClick={() => onThreadClick?.(message)}
               size="sm"
               variant="ghost"
-              className="text-xs text-zinc-500 hover:text-zinc-600"
+              className="text-xs text-zinc-500 hover:text-zinc-600 dark:text-zinc-400 dark:hover:text-zinc-300 flex items-center gap-1"
             >
-              {message._count?.replies || 0} replies
+              <MessageCircle className="h-3 w-3" />
+              {message._count?.replies || 0} {message._count?.replies === 1 ? 'reply' : 'replies'}
             </Button>
           </div>
         )}
       </div>
-      {!isEditing && (
+      <div 
+        className={cn(
+          "flex items-center gap-1 bg-white dark:bg-zinc-900 shadow-sm border border-zinc-200 dark:border-zinc-700 rounded-md py-1 px-1 transition-all",
+          "opacity-0 group-hover:opacity-100 md:opacity-30 focus-within:opacity-100",
+          "absolute right-4 top-2"
+        )}
+        role="toolbar"
+        aria-label="Message actions"
+      >
         <TooltipProvider>
-          <div className="opacity-0 group-hover:opacity-100 absolute right-4 top-2 flex items-center gap-1 bg-white shadow-sm border border-zinc-200 rounded-md py-1 px-1 transition-opacity">
-            <Popover open={isPickerOpen} onOpenChange={setIsPickerOpen}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-zinc-500 hover:text-zinc-600"
-                    >
-                      <SmilePlus className="h-4 w-4" />
-                    </Button>
-                  </PopoverTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="bg-white text-zinc-600">
-                  Add reaction
-                </TooltipContent>
-              </Tooltip>
-              <PopoverContent 
-                className="w-full p-0 border-none" 
+          <Popover open={isPickerOpen} onOpenChange={setIsPickerOpen}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-zinc-500 hover:text-zinc-600 dark:text-zinc-400 dark:hover:text-zinc-300"
+                    aria-label="Add reaction"
+                  >
+                    <SmilePlus className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent 
                 side="top" 
-                align="end"
+                className="bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
               >
-                <Picker
-                  data={data}
-                  onEmojiSelect={onEmojiSelect}
-                  theme="light"
-                  previewPosition="none"
-                  skinTonePosition="none"
-                />
-              </PopoverContent>
-            </Popover>
-            {!isThread && (
+                Add reaction
+              </TooltipContent>
+            </Tooltip>
+            <PopoverContent 
+              className="w-full p-0 border-none shadow-lg" 
+              side="top" 
+              align="end"
+            >
+              <Picker
+                data={data}
+                onEmojiSelect={onEmojiSelect}
+                theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
+                previewPosition="none"
+                skinTonePosition="none"
+              />
+            </PopoverContent>
+          </Popover>
+          {!isThread && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={() => onThreadClick?.(message)}
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-zinc-500 hover:text-zinc-600 dark:text-zinc-400 dark:hover:text-zinc-300"
+                  aria-label="Reply in thread"
+                >
+                  <Reply className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent 
+                side="top" 
+                className="bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+              >
+                Reply in thread
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {isOwner && (
+            <>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    onClick={() => onThreadClick?.(message)}
+                    onClick={() => {
+                      setEditingId(message.id);
+                      setEditContent(message.content);
+                    }}
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 text-zinc-500 hover:text-zinc-600"
+                    className="h-7 w-7 text-zinc-500 hover:text-zinc-600 dark:text-zinc-400 dark:hover:text-zinc-300"
+                    aria-label="Edit message"
                   >
-                    <Reply className="h-4 w-4" />
+                    <Edit2 className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top" className="bg-white text-zinc-600">
-                  Reply in thread
+                <TooltipContent 
+                  side="top" 
+                  className="bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                >
+                  Edit message
                 </TooltipContent>
               </Tooltip>
-            )}
-            {isOwner && (
-              <>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      onClick={() => {
-                        setEditingId(message.id);
-                        setEditContent(message.content);
-                      }}
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-zinc-500 hover:text-zinc-600"
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="bg-white text-zinc-600">
-                    Edit message
-                  </TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      onClick={onDelete}
-                      disabled={isLoading}
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-zinc-500 hover:text-red-600"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="bg-white text-zinc-600">
-                    Delete message
-                  </TooltipContent>
-                </Tooltip>
-              </>
-            )}
-          </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={onDelete}
+                    disabled={isLoading}
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-zinc-500 hover:text-red-600 dark:text-zinc-400 dark:hover:text-red-500"
+                    aria-label="Delete message"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent 
+                  side="top" 
+                  className="bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                >
+                  Delete message
+                </TooltipContent>
+              </Tooltip>
+            </>
+          )}
         </TooltipProvider>
-      )}
+      </div>
     </div>
   );
 } 

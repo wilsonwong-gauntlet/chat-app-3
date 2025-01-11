@@ -99,7 +99,7 @@ export function MessageReactions({
     <div className="flex flex-wrap items-center gap-1 mt-1">
       {reactions.map((reaction) => (
         <Button
-          key={reaction.emoji}
+          key={`${messageId}-${reaction.emoji}`}
           variant="ghost"
           size="sm"
           onClick={() => handleReaction(reaction.emoji)}

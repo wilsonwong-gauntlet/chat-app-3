@@ -23,14 +23,21 @@ export function MessageList({
   channelId,
   initialMessages
 }: MessageListProps) {
-  const [messages, setMessages] = useState<MessageWithUser[]>(
-    initialMessages.filter(message => !message.parentId)
-  );
+  const [messages, setMessages] = useState<MessageWithUser[]>(() => {
+    // Initialize with deduped messages
+    const uniqueMessages = new Map(
+      initialMessages
+        .filter(message => !message.parentId)
+        .map(message => [message.id, message])
+    );
+    return Array.from(uniqueMessages.values());
+  });
   const [activeThread, setActiveThread] = useState<MessageWithUser | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const processedEvents = useRef(new Set<string>());
 
   const { ref: loadMoreRef, inView } = useInView({
     threshold: 0
@@ -59,7 +66,17 @@ export function MessageList({
         return;
       }
 
-      setMessages(prev => [...data.filter((msg: Message) => !msg.parentId), ...prev]);
+      setMessages(prev => {
+        const newMessages = data.filter((msg: MessageWithUser) => !msg.parentId);
+        const uniqueMessages = new Map([
+          ...newMessages.map((msg: MessageWithUser) => [msg.id, msg]),
+          ...prev.map((msg: MessageWithUser) => [msg.id, msg])
+        ]);
+        const messagesArray = Array.from(uniqueMessages.values()) as MessageWithUser[];
+        return messagesArray.sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      });
     } catch (error) {
       console.error("Failed to load more messages:", error);
     } finally {
@@ -78,17 +95,29 @@ export function MessageList({
     bottomRef?.current?.scrollIntoView();
 
     const messageHandler = (message: MessageWithUser) => {
+      const eventKey = `${channelId}:${message.id}:new`;
+      if (processedEvents.current.has(eventKey)) return;
+      processedEvents.current.add(eventKey);
+
       if (!message.parentId) {
         setMessages((current) => {
           const exists = current.some(msg => msg.id === message.id);
           if (exists) return current;
-          return [...current, message];
+          
+          const newMessages = [...current, message];
+          return newMessages.sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
         });
         bottomRef?.current?.scrollIntoView();
       }
     };
 
     const updateHandler = (updatedMessage: MessageWithUser) => {
+      const eventKey = `${channelId}:${updatedMessage.id}:update`;
+      if (processedEvents.current.has(eventKey)) return;
+      processedEvents.current.add(eventKey);
+
       if (!updatedMessage.parentId) {
         setMessages((current) => 
           current.map((msg) => 
@@ -99,6 +128,10 @@ export function MessageList({
     };
 
     const deleteHandler = (messageId: string) => {
+      const eventKey = `${channelId}:${messageId}:delete`;
+      if (processedEvents.current.has(eventKey)) return;
+      processedEvents.current.add(eventKey);
+
       setMessages((current) => 
         current.filter((msg) => msg.id !== messageId)
       );
@@ -113,12 +146,13 @@ export function MessageList({
       pusherClient.unbind("new-message", messageHandler);
       pusherClient.unbind("message-update", updateHandler);
       pusherClient.unbind("message-delete", deleteHandler);
+      processedEvents.current.clear();
     };
   }, [channelId]);
 
   return (
     <div className="flex h-full relative">
-      <div className={`flex-1 ${activeThread ? 'border-r border-zinc-200' : ''}`}>
+      <div className={`flex-1 ${activeThread ? 'border-r border-zinc-200 dark:border-zinc-700' : ''}`}>
         <div 
           className="h-full overflow-y-auto px-4"
           onScroll={handleScroll}
@@ -136,7 +170,7 @@ export function MessageList({
           <div className="space-y-4">
             {messages.map((message) => (
               <MessageItem
-                key={message.id}
+                key={`${channelId}:${message.id}`}
                 message={message}
                 onThreadClick={setActiveThread}
               />
@@ -155,7 +189,7 @@ export function MessageList({
         )}
       </div>
       {activeThread && (
-        <div className="w-[400px] border-l border-zinc-200 hidden md:block bg-zinc-50/50">
+        <div className="w-[400px] border-l border-zinc-200 dark:border-zinc-700 hidden md:block bg-zinc-50/50">
           <ThreadView
             thread={activeThread}
             channelId={channelId}
