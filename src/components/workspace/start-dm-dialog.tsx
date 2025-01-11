@@ -46,41 +46,20 @@ export function StartDMDialog({ members }: StartDMDialogProps) {
       setIsLoading(true);
       
       // First check if a DM channel already exists
-      const response = await fetch(`/api/workspaces/${params.workspaceId}/channels?type=DIRECT&memberId=${selectedUser.id}`);
+      const response = await fetch(`/api/workspaces/${params.workspaceId}/direct-messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ userId: selectedUser.clerkId })
+      });
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || "Failed to check existing DMs");
       }
       
-      const existingChannels = await response.json();
-
-      if (existingChannels.length > 0) {
-        // If DM exists, navigate to it
-        router.push(`/workspaces/${params.workspaceId}/channels/${existingChannels[0].id}`);
-        router.refresh();
-        onClose();
-        return;
-      }
-
-      // If no DM exists, create a new one with a unique name
-      const createResponse = await fetch(`/api/workspaces/${params.workspaceId}/channels`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: `dm-${Date.now()}-${selectedUser.id}`,
-          type: "DIRECT",
-          memberIds: [selectedUser.id],
-        }),
-      });
-
-      if (!createResponse.ok) {
-        const error = await createResponse.json();
-        throw new Error(error.error || "Failed to create DM channel");
-      }
-
-      const channel = await createResponse.json();
+      const channel = await response.json();
       router.push(`/workspaces/${params.workspaceId}/channels/${channel.id}`);
       router.refresh();
       onClose();

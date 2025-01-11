@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useModal } from "@/hooks/use-modal-store";
 
 interface WorkspaceSwitcherProps {
   currentWorkspaceId: string;
@@ -25,12 +26,13 @@ export function WorkspaceSwitcher({
   workspaces
 }: WorkspaceSwitcherProps) {
   const router = useRouter();
+  const { onOpen } = useModal();
   const [isLoading, setIsLoading] = useState(false);
 
   const onWorkspaceChange = (workspaceId: string) => {
     if (workspaceId === "new") {
-      // Handle new workspace creation
-      router.push("/workspaces/new");
+      // Open the create workspace modal instead of navigating
+      onOpen("createWorkspace");
     } else {
       router.push(`/workspaces/${workspaceId}`);
     }

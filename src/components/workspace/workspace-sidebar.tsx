@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useWorkspace } from "@/providers/workspace-provider";
 import { formatDistanceToNow } from "date-fns";
+import { useModal } from "@/hooks/use-modal-store";
 
 interface WorkspaceSidebarProps {
   channels: (Channel & {
@@ -60,6 +61,7 @@ export function WorkspaceSidebar({
   availableWorkspaces
 }: WorkspaceSidebarProps) {
   const router = useRouter();
+  const { onOpen } = useModal();
   const { workspace } = useWorkspace();
 
   if (!workspace) return null;
@@ -95,7 +97,7 @@ export function WorkspaceSidebar({
             </DropdownMenuItem>
             <DropdownMenuItem
               className="w-full cursor-pointer px-3 py-2 text-sm text-emerald-600"
-              onClick={() => router.push("/workspaces/new")}
+              onClick={() => onOpen("createWorkspace")}
             >
               Create a New Workspace
             </DropdownMenuItem>

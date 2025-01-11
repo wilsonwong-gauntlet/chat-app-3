@@ -13,21 +13,35 @@ export async function POST(
   { params }: { params: { workspaceId: string } }
 ) {
   try {
-    const { userId: currentUserId } = await auth();
+    const { userId: currentClerkId } = await auth();
 
-    if (!currentUserId) {
+    if (!currentClerkId) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
     const body = await req.json();
-    const { userId: targetUserId } = createDMSchema.parse(body);
+    const { userId: targetClerkId } = createDMSchema.parse(body);
 
-    // Check if users are in the same workspace
+    // First, get both users from the database using their Clerk IDs
+    const [currentUser, targetUser] = await Promise.all([
+      db.user.findUnique({
+        where: { clerkId: currentClerkId }
+      }),
+      db.user.findUnique({
+        where: { clerkId: targetClerkId }
+      })
+    ]);
+
+    if (!currentUser || !targetUser) {
+      return new NextResponse("One or both users not found", { status: 404 });
+    }
+
+    // Now check if both users are members of the workspace
     const [currentMember, targetMember] = await Promise.all([
       db.workspaceMember.findUnique({
         where: {
           userId_workspaceId: {
-            userId: currentUserId,
+            userId: currentUser.id,
             workspaceId: params.workspaceId
           }
         }
@@ -35,7 +49,7 @@ export async function POST(
       db.workspaceMember.findUnique({
         where: {
           userId_workspaceId: {
-            userId: targetUserId,
+            userId: targetUser.id,
             workspaceId: params.workspaceId
           }
         }
@@ -55,14 +69,14 @@ export async function POST(
           {
             members: {
               some: {
-                userId: currentUserId
+                userId: currentUser.id
               }
             }
           },
           {
             members: {
               some: {
-                userId: targetUserId
+                userId: targetUser.id
               }
             }
           }
@@ -84,14 +98,14 @@ export async function POST(
     // Create new DM channel
     const channel = await db.channel.create({
       data: {
-        name: "dm", // This will be displayed as the other user's name in the UI
+        name: `dm-${Date.now()}`,
         type: "DIRECT",
         workspaceId: params.workspaceId,
         members: {
           createMany: {
             data: [
-              { userId: currentUserId },
-              { userId: targetUserId }
+              { userId: currentUser.id },
+              { userId: targetUser.id }
             ]
           }
         }
