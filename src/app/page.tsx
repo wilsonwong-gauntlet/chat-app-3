@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { ArrowRight, MessageSquare, Users2, Lock, Zap, Globe2, Bot } from "lucide-react";
+import { ArrowRight, MessageSquare, Users2, Lock, Zap, Globe2, Bot, BarChart2, GitMerge } from "lucide-react";
 import Image from "next/image";
 
 export default async function RootPage() {
@@ -11,24 +11,18 @@ export default async function RootPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-b from-slate-900 via-slate-900 to-slate-800">
+    <div className="flex flex-col min-h-screen bg-zinc-50 dark:bg-zinc-900">
       {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 bg-slate-900/80 backdrop-blur-sm border-b border-slate-800">
+      <nav className="fixed top-0 w-full z-50 bg-zinc-50/80 dark:bg-zinc-900/80 backdrop-blur-sm border-b border-zinc-200 dark:border-zinc-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
-              <Image
-                src="/logo.png"
-                alt="Slack Clone"
-                width={32}
-                height={32}
-                className="w-8 h-8"
-              />
-              <span className="ml-2 text-xl font-bold text-white">Slack Clone</span>
+
+              <span className="ml-2 text-xl font-bold text-zinc-900 dark:text-zinc-100">Clarity AI</span>
             </div>
             <a
               href="/sign-in"
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="inline-flex items-center px-4 py-2 border border-zinc-200 dark:border-zinc-700 text-sm font-medium rounded-md text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zinc-500"
             >
               Sign In
             </a>
@@ -40,26 +34,26 @@ export default async function RootPage() {
       <div className="pt-24 pb-16 sm:pt-32 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h1 className="text-4xl sm:text-6xl font-bold text-white mb-6 tracking-tight">
-              Team communication
-              <span className="text-indigo-500"> reimagined</span>
+            <h1 className="text-4xl sm:text-6xl font-bold text-zinc-900 dark:text-zinc-100 mb-6 tracking-tight">
+              Intelligent conversations.
+              <span className="text-zinc-500"> Structured clarity.</span>
             </h1>
-            <p className="text-xl text-slate-400 mb-8 max-w-2xl mx-auto">
-              A modern real-time messaging platform that brings your team together. Collaborate efficiently with organized conversations, instant messaging, and powerful integrations.
+            <p className="text-xl text-zinc-600 dark:text-zinc-400 mb-8 max-w-2xl mx-auto">
+              An AI-enhanced chat platform designed for precise communication and systematic knowledge management. Built for those who value clear thinking and efficient collaboration.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a
                 href="/sign-up"
-                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                className="inline-flex items-center px-6 py-3 border border-zinc-200 dark:border-zinc-700 text-base font-medium rounded-md text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zinc-500"
               >
-                Get Started Free
+                Begin
                 <ArrowRight className="ml-2 h-5 w-5" />
               </a>
               <a
                 href="#features"
-                className="inline-flex items-center px-6 py-3 border border-slate-600 text-base font-medium rounded-md text-slate-300 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500"
+                className="inline-flex items-center px-6 py-3 border border-zinc-200 dark:border-zinc-700 text-base font-medium rounded-md text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zinc-500"
               >
-                See Features
+                View Features
               </a>
             </div>
           </div>
@@ -67,98 +61,97 @@ export default async function RootPage() {
       </div>
 
       {/* Features Section */}
-      <div id="features" className="py-16 bg-slate-800/50">
+      <div id="features" className="py-16 bg-white dark:bg-zinc-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-white mb-4">Everything you need for team collaboration</h2>
-            <p className="text-slate-400">Powerful features to keep your team connected and productive</p>
+            <h2 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-4">Core Architecture</h2>
+            <p className="text-zinc-600 dark:text-zinc-400">Essential components for intelligent communication</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* Real-time Messaging */}
-            <div className="p-6 rounded-lg bg-slate-800 border border-slate-700">
-              <div className="w-12 h-12 rounded-lg bg-indigo-600/10 flex items-center justify-center mb-4">
-                <MessageSquare className="h-6 w-6 text-indigo-500" />
+            {/* Knowledge Foundation */}
+            <div className="p-6 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700">
+              <div className="w-12 h-12 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4">
+                <BarChart2 className="h-6 w-6 text-zinc-900 dark:text-zinc-100" />
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">Real-time Messaging</h3>
-              <p className="text-slate-400">Instant message delivery with typing indicators and read receipts.</p>
+              <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-2">Message Architecture</h3>
+              <p className="text-zinc-600 dark:text-zinc-400">Structured conversations with context-aware organization and intelligent threading.</p>
             </div>
 
-            {/* Team Channels */}
-            <div className="p-6 rounded-lg bg-slate-800 border border-slate-700">
-              <div className="w-12 h-12 rounded-lg bg-indigo-600/10 flex items-center justify-center mb-4">
-                <Users2 className="h-6 w-6 text-indigo-500" />
+            {/* Thought Synthesis */}
+            <div className="p-6 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700">
+              <div className="w-12 h-12 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4">
+                <GitMerge className="h-6 w-6 text-zinc-900 dark:text-zinc-100" />
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">Team Channels</h3>
-              <p className="text-slate-400">Organize conversations by topics, projects, or teams.</p>
+              <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-2">AI Integration</h3>
+              <p className="text-zinc-600 dark:text-zinc-400">Context-aware AI assistance that enhances understanding without disrupting flow.</p>
             </div>
 
-            {/* Secure Communication */}
-            <div className="p-6 rounded-lg bg-slate-800 border border-slate-700">
-              <div className="w-12 h-12 rounded-lg bg-indigo-600/10 flex items-center justify-center mb-4">
-                <Lock className="h-6 w-6 text-indigo-500" />
+            {/* Mental Sanctuary */}
+            <div className="p-6 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700">
+              <div className="w-12 h-12 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4">
+                <Lock className="h-6 w-6 text-zinc-900 dark:text-zinc-100" />
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">Secure Communication</h3>
-              <p className="text-slate-400">Enterprise-grade security with end-to-end encryption.</p>
+              <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-2">Privacy Control</h3>
+              <p className="text-zinc-600 dark:text-zinc-400">Granular privacy settings with encrypted communications and selective sharing.</p>
             </div>
 
-            {/* Fast Performance */}
-            <div className="p-6 rounded-lg bg-slate-800 border border-slate-700">
-              <div className="w-12 h-12 rounded-lg bg-indigo-600/10 flex items-center justify-center mb-4">
-                <Zap className="h-6 w-6 text-indigo-500" />
+            {/* Cognitive Flow */}
+            <div className="p-6 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700">
+              <div className="w-12 h-12 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4">
+                <Zap className="h-6 w-6 text-zinc-900 dark:text-zinc-100" />
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">Fast Performance</h3>
-              <p className="text-slate-400">Optimized for speed with instant updates and low latency.</p>
+              <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-2">Information Flow</h3>
+              <p className="text-zinc-600 dark:text-zinc-400">Efficient message handling with minimal latency and intelligent prioritization.</p>
             </div>
 
-            {/* Global Access */}
-            <div className="p-6 rounded-lg bg-slate-800 border border-slate-700">
-              <div className="w-12 h-12 rounded-lg bg-indigo-600/10 flex items-center justify-center mb-4">
-                <Globe2 className="h-6 w-6 text-indigo-500" />
+            {/* Collective Intelligence */}
+            <div className="p-6 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700">
+              <div className="w-12 h-12 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4">
+                <Globe2 className="h-6 w-6 text-zinc-900 dark:text-zinc-100" />
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">Global Access</h3>
-              <p className="text-slate-400">Access your workspace from anywhere, on any device.</p>
+              <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-2">Knowledge Network</h3>
+              <p className="text-zinc-600 dark:text-zinc-400">Systematic organization of discussions with advanced search and filtering.</p>
             </div>
 
-            {/* AI Integration */}
-            <div className="p-6 rounded-lg bg-slate-800 border border-slate-700">
-              <div className="w-12 h-12 rounded-lg bg-indigo-600/10 flex items-center justify-center mb-4">
-                <Bot className="h-6 w-6 text-indigo-500" />
+            {/* Augmented Wisdom */}
+            <div className="p-6 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700">
+              <div className="w-12 h-12 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4">
+                <Bot className="h-6 w-6 text-zinc-900 dark:text-zinc-100" />
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">AI Integration</h3>
-              <p className="text-slate-400">Smart features powered by AI for enhanced productivity.</p>
+              <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-2">Pattern Recognition</h3>
+              <p className="text-zinc-600 dark:text-zinc-400">AI-powered insights that identify patterns and connections in conversations.</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* CTA Section */}
-      <div className="py-16 bg-slate-900">
+      <div className="py-16 bg-zinc-50 dark:bg-zinc-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-indigo-600 rounded-2xl p-8 md:p-12 relative overflow-hidden">
+          <div className="bg-white dark:bg-zinc-800 rounded-2xl p-8 md:p-12 border border-zinc-200 dark:border-zinc-700">
             <div className="relative z-10">
-              <h2 className="text-3xl font-bold text-white mb-4">Ready to transform your team communication?</h2>
-              <p className="text-indigo-100 mb-6 max-w-2xl">
-                Join thousands of teams already using our platform to collaborate better.
+              <h2 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-4">Experience structured communication</h2>
+              <p className="text-zinc-600 dark:text-zinc-400 mb-6 max-w-2xl">
+                Join teams using AI-enhanced chat to achieve clearer communication and better outcomes.
               </p>
               <a
                 href="/sign-up"
-                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-indigo-600 bg-white hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                className="inline-flex items-center px-6 py-3 border border-zinc-200 dark:border-zinc-700 text-base font-medium rounded-md text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zinc-500"
               >
-                Get Started Free
+                Get Started
                 <ArrowRight className="ml-2 h-5 w-5" />
               </a>
             </div>
-            <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-indigo-800"></div>
           </div>
         </div>
       </div>
 
       {/* Footer */}
-      <footer className="bg-slate-900 border-t border-slate-800">
+      <footer className="bg-white dark:bg-zinc-800 border-t border-zinc-200 dark:border-zinc-700">
         <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-sm text-slate-500">
-            © {new Date().getFullYear()} Slack Clone. All rights reserved.
+          <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">
+            © {new Date().getFullYear()} Clarity AI Chat. Version 1.0.4
           </p>
         </div>
       </footer>

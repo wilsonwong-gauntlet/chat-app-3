@@ -1,187 +1,338 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { useModal } from "@/hooks/use-modal-store";
-import { Card } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { Plus, Clock, Star, Grid, Search, Settings, ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Users, Hash, Search, Star, Clock, Grid } from "lucide-react";
-import { motion } from "framer-motion";
-import { useState } from "react";
+
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
-// Animation variants
-const container = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1
-    }
-  }
-};
-
-const item = {
-  hidden: { y: 20, opacity: 0 },
-  show: { y: 0, opacity: 1 }
-};
+import { useModal } from "@/hooks/use-modal-store";
+import { cn } from "@/lib/utils";
+import { Workspace } from "@prisma/client";
+import { ScrollArea } from "./ui/scroll-area";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider
+} from "@/components/ui/tooltip";
 
 interface WorkspaceListClientProps {
-  workspaces: {
-    id: string;
-    name: string;
-    _count?: {
+  workspaces: (Workspace & {
+    _count: {
       members: number;
       channels: number;
     };
-  }[];
+  })[];
 }
 
-// Workspace Card Component
-function WorkspaceCard({ workspace, router }: { workspace: any, router: any }) {
-  return (
-    <motion.div variants={item}>
-      <Card
-        className="group relative overflow-hidden border border-border/50 hover:border-indigo-500/50 bg-card/50 backdrop-blur-sm hover:shadow-lg transition-all duration-300 cursor-pointer"
-        onClick={() => router.push(`/workspaces/${workspace.id}`)}
-      >
-        <div className="p-4">
-          {/* Workspace Icon */}
-          <div className="mb-3 flex justify-center">
-            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 flex items-center justify-center group-hover:border-indigo-500/30 transition-colors">
-              <p className="font-semibold text-2xl text-indigo-500 group-hover:text-indigo-400 transition-colors">
-                {workspace.name[0].toUpperCase()}
-              </p>
-            </div>
-          </div>
-
-          {/* Workspace Info */}
-          <div className="text-center">
-            <h3 className="font-medium truncate group-hover:text-indigo-500 transition-colors">
-              {workspace.name}
-            </h3>
-            {workspace._count && (
-              <p className="text-xs text-muted-foreground mt-1">
-                {workspace._count.members} {workspace._count.members === 1 ? "member" : "members"}
-              </p>
-            )}
-          </div>
-        </div>
-      </Card>
-    </motion.div>
-  );
-}
+type ViewMode = "grid" | "list";
+type SortMode = "recent" | "name" | "members";
 
 export default function WorkspaceListClient({
   workspaces
 }: WorkspaceListClientProps) {
-  const { onOpen } = useModal();
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
+  const { onOpen } = useModal();
+  const [search, setSearch] = useState("");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [sortMode, setSortMode] = useState<SortMode>("recent");
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
 
-  // Mock data for categories (in a real app, these would come from the backend)
-  const recentWorkspaces = workspaces.slice(0, 3);
-  const favoriteWorkspaces = workspaces.slice(0, 4);
+  // Load favorites from localStorage
+  useEffect(() => {
+    const savedFavorites = localStorage.getItem("favoriteWorkspaces");
+    if (savedFavorites) {
+      setFavorites(new Set(JSON.parse(savedFavorites)));
+    }
+  }, []);
 
-  const filteredWorkspaces = workspaces.filter(workspace =>
-    workspace.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Save favorites to localStorage
+  const toggleFavorite = (workspaceId: string) => {
+    setFavorites(prev => {
+      const newFavorites = new Set(prev);
+      if (newFavorites.has(workspaceId)) {
+        newFavorites.delete(workspaceId);
+      } else {
+        newFavorites.add(workspaceId);
+      }
+      localStorage.setItem("favoriteWorkspaces", JSON.stringify([...newFavorites]));
+      return newFavorites;
+    });
+  };
+
+  const filteredWorkspaces = workspaces
+    .filter(workspace => 
+      workspace.name.toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => {
+      switch (sortMode) {
+        case "name":
+          return a.name.localeCompare(b.name);
+        case "members":
+          return b._count.members - a._count.members;
+        case "recent":
+        default:
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+    });
+
+  const favoriteWorkspaces = filteredWorkspaces.filter(w => favorites.has(w.id));
+  const nonFavoriteWorkspaces = filteredWorkspaces.filter(w => !favorites.has(w.id));
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-background/80 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header Section */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold tracking-tight mb-4">
+    <div className="h-full bg-zinc-50 dark:bg-zinc-900">
+      <div className="h-full max-w-6xl mx-auto p-8">
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
             Your Workspaces
           </h1>
-          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Select a workspace to get started or create a new one
-          </p>
-          <Button
-            size="lg"
-            onClick={() => onOpen("createWorkspace")}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 h-12 rounded-full"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Create a Workspace
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={() => onOpen("createWorkspace")}
+                  className="bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                >
+                  <Plus className="h-5 w-5 mr-2" />
+                  Create a Workspace
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                Create new workspace (Ctrl/⌘ + N)
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
-        {/* Search and Filter Bar */}
-        <div className="relative mb-8">
-          <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
-          <Input
-            placeholder="Search workspaces..."
-            className="pl-10 h-12 bg-background/60 backdrop-blur-sm"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-
-        {/* Only show categories if not searching */}
-        {!searchQuery && (
-          <>
-            {/* Recent Section */}
-            <section className="mb-12">
-              <div className="flex items-center gap-2 mb-4">
-                <Clock className="h-5 w-5 text-indigo-500" />
-                <h2 className="text-lg font-semibold">Recent</h2>
-                <span className="text-sm text-muted-foreground">({recentWorkspaces.length})</span>
-              </div>
-              <motion.div
-                variants={container}
-                initial="hidden"
-                animate="show"
-                className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"
-              >
-                {recentWorkspaces.map((workspace) => (
-                  <WorkspaceCard key={workspace.id} workspace={workspace} router={router} />
-                ))}
-              </motion.div>
-            </section>
-
-            {/* Favorites Section */}
-            <section className="mb-12">
-              <div className="flex items-center gap-2 mb-4">
-                <Star className="h-5 w-5 text-yellow-500" />
-                <h2 className="text-lg font-semibold">Favorites</h2>
-                <span className="text-sm text-muted-foreground">({favoriteWorkspaces.length})</span>
-              </div>
-              <motion.div
-                variants={container}
-                initial="hidden"
-                animate="show"
-                className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"
-              >
-                {favoriteWorkspaces.map((workspace) => (
-                  <WorkspaceCard key={workspace.id} workspace={workspace} router={router} />
-                ))}
-              </motion.div>
-            </section>
-          </>
-        )}
-
-        {/* All Workspaces Section */}
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <Grid className="h-5 w-5 text-indigo-500" />
-            <h2 className="text-lg font-semibold">
-              {searchQuery ? "Search Results" : "All Workspaces"}
-            </h2>
-            <span className="text-sm text-muted-foreground">({filteredWorkspaces.length})</span>
+        <div className="flex items-center gap-4 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-zinc-500" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search workspaces..."
+              className="pl-10 bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700"
+            />
           </div>
-          <motion.div
-            variants={container}
-            initial="hidden"
-            animate="show"
-            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"
+          <TooltipProvider>
+            <div className="flex items-center gap-2 bg-white dark:bg-zinc-800 rounded-md p-1 border border-zinc-200 dark:border-zinc-700">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setViewMode("grid")}
+                    className={cn(
+                      "h-8 w-8",
+                      viewMode === "grid" && "bg-zinc-100 dark:bg-zinc-700"
+                    )}
+                  >
+                    <Grid className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Grid view</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setViewMode("list")}
+                    className={cn(
+                      "h-8 w-8",
+                      viewMode === "list" && "bg-zinc-100 dark:bg-zinc-700"
+                    )}
+                  >
+                    <svg 
+                      className="h-4 w-4" 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M4 6h16M4 12h16M4 18h16" 
+                      />
+                    </svg>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>List view</TooltipContent>
+              </Tooltip>
+            </div>
+          </TooltipProvider>
+          <select
+            value={sortMode}
+            onChange={(e) => setSortMode(e.target.value as SortMode)}
+            className="h-10 rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
           >
-            {filteredWorkspaces.map((workspace) => (
-              <WorkspaceCard key={workspace.id} workspace={workspace} router={router} />
-            ))}
-          </motion.div>
-        </section>
+            <option value="recent">Sort by Recent</option>
+            <option value="name">Sort by Name</option>
+            <option value="members">Sort by Members</option>
+          </select>
+        </div>
+
+        <ScrollArea className="h-[calc(100vh-12rem)]">
+          {favoriteWorkspaces.length > 0 && (
+            <div className="mb-8">
+              <div className="flex items-center gap-2 mb-4 text-sm font-medium text-zinc-500">
+                <Star className="h-4 w-4" />
+                <span>Favorites</span>
+              </div>
+              <div className={cn(
+                viewMode === "grid" 
+                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                  : "space-y-2"
+              )}>
+                {favoriteWorkspaces.map((workspace) => (
+                  <WorkspaceCard
+                    key={workspace.id}
+                    workspace={workspace}
+                    viewMode={viewMode}
+                    isFavorite={true}
+                    onFavoriteToggle={() => toggleFavorite(workspace.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <div className="flex items-center gap-2 mb-4 text-sm font-medium text-zinc-500">
+              <Grid className="h-4 w-4" />
+              <span>All Workspaces</span>
+            </div>
+            <div className={cn(
+              viewMode === "grid" 
+                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                : "space-y-2"
+            )}>
+              {nonFavoriteWorkspaces.map((workspace) => (
+                <WorkspaceCard
+                  key={workspace.id}
+                  workspace={workspace}
+                  viewMode={viewMode}
+                  isFavorite={false}
+                  onFavoriteToggle={() => toggleFavorite(workspace.id)}
+                />
+              ))}
+            </div>
+          </div>
+        </ScrollArea>
       </div>
     </div>
+  );
+}
+
+interface WorkspaceCardProps {
+  workspace: Workspace & {
+    _count: {
+      members: number;
+      channels: number;
+    };
+  };
+  viewMode: ViewMode;
+  isFavorite: boolean;
+  onFavoriteToggle: () => void;
+}
+
+function WorkspaceCard({ workspace, viewMode, isFavorite, onFavoriteToggle }: WorkspaceCardProps) {
+  const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    }).format(new Date(date));
+  };
+
+  if (viewMode === "list") {
+    return (
+      <div className="flex items-center justify-between p-4 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 transition-colors group">
+        <div className="flex items-center gap-4">
+          <div className="h-10 w-10 flex items-center justify-center bg-zinc-100 dark:bg-zinc-700 rounded-md text-lg font-semibold">
+            {workspace.name[0].toUpperCase()}
+          </div>
+          <div>
+            <h3 className="font-medium text-zinc-900 dark:text-zinc-100">{workspace.name}</h3>
+            <p className="text-sm text-zinc-500">{workspace._count.members} members · Created {formatDate(workspace.createdAt)}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onFavoriteToggle();
+                  }}
+                  className="opacity-0 group-hover:opacity-100"
+                >
+                  <Star className={cn(
+                    "h-4 w-4",
+                    isFavorite ? "fill-yellow-400 stroke-yellow-400" : "stroke-zinc-500"
+                  )} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{isFavorite ? "Remove from favorites" : "Add to favorites"}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <Link href={`/workspaces/${workspace.id}`}>
+            <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Link href={`/workspaces/${workspace.id}`}>
+      <div className="p-6 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 transition-colors group">
+        <div className="flex items-center justify-between mb-4">
+          <div className="h-12 w-12 flex items-center justify-center bg-zinc-100 dark:bg-zinc-700 rounded-md text-xl font-semibold">
+            {workspace.name[0].toUpperCase()}
+          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onFavoriteToggle();
+                  }}
+                  className="opacity-0 group-hover:opacity-100"
+                >
+                  <Star className={cn(
+                    "h-4 w-4",
+                    isFavorite ? "fill-yellow-400 stroke-yellow-400" : "stroke-zinc-500"
+                  )} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{isFavorite ? "Remove from favorites" : "Add to favorites"}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+        <h3 className="font-medium text-zinc-900 dark:text-zinc-100 mb-1">{workspace.name}</h3>
+        <div className="flex items-center gap-2 text-sm text-zinc-500">
+          <span>{workspace._count.members} members</span>
+          <span>·</span>
+          <span>{workspace._count.channels} channels</span>
+        </div>
+        <div className="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-700">
+          <div className="text-xs text-zinc-500">
+            Created {formatDate(workspace.createdAt)}
+          </div>
+        </div>
+      </div>
+    </Link>
   );
 } 
