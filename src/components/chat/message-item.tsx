@@ -7,6 +7,7 @@ import { SmilePlus, Reply, Edit2, Trash2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
+import Image from "next/image";
 import {
   Tooltip,
   TooltipContent,
@@ -22,6 +23,7 @@ import { useUser } from "@clerk/nextjs";
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
 import { MessageReactions } from "@/components/message-reactions";
+import { getFileType } from "@/lib/s3";
 
 interface MessageItemProps {
   message: MessageWithUser;
@@ -175,14 +177,27 @@ export function MessageItem({
                 {message.content}
               </div>
               {message.fileUrl && (
-                <a 
-                  href={message.fileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer" 
-                  className="text-sm text-blue-500 hover:underline"
-                >
-                  Attachment
-                </a>
+                <>
+                  {getFileType(message.fileUrl) === "image" ? (
+                    <div className="relative mt-2 aspect-video w-48 overflow-hidden rounded-md">
+                      <Image
+                        src={message.fileUrl}
+                        alt="Uploaded image"
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <a 
+                      href={message.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer" 
+                      className="text-sm text-blue-500 hover:underline"
+                    >
+                      Attachment
+                    </a>
+                  )}
+                </>
               )}
               <MessageReactions
                 messageId={message.id}
