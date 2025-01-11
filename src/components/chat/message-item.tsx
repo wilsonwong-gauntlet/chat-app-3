@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import Image from "next/image";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import type { ReactNode } from "react";
 import {
   Tooltip,
   TooltipContent,
@@ -24,6 +27,7 @@ import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
 import { MessageReactions } from "@/components/message-reactions";
 import { getFileType } from "@/lib/s3";
+import { cn } from "@/lib/utils";
 
 interface MessageItemProps {
   message: MessageWithUser;
@@ -173,8 +177,13 @@ export function MessageItem({
             </div>
           ) : (
             <>
-              <div className="text-sm text-zinc-600 whitespace-pre-wrap">
-                {message.content}
+              <div className="text-sm text-zinc-600">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  className="prose prose-sm dark:prose-invert prose-zinc max-w-none break-words [&_p]:leading-normal [&_p]:my-0 [&_pre]:my-0 [&_code]:px-1 [&_code]:py-0.5 [&_code]:bg-zinc-100 [&_code]:rounded-md [&_code]:text-sm [&_code]:font-mono"
+                >
+                  {message.content}
+                </ReactMarkdown>
               </div>
               {message.fileUrl && (
                 <>
