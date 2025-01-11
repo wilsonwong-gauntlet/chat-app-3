@@ -49,11 +49,11 @@ export default async function WorkspaceLayout({
 
   return (
     <WorkspaceProvider>
-      <div className="flex h-full">
-        <div className="hidden md:flex w-60 z-20 flex-col fixed inset-y-0">
+      <div className="flex h-screen overflow-hidden">
+        <div className="hidden md:flex w-60 flex-col fixed inset-y-0 z-20 bg-zinc-50 dark:bg-zinc-900">
           <WorkspaceSidebarClient availableWorkspaces={workspaces} />
         </div>
-        <main className="flex-1 h-full pl-60">
+        <main className="flex-1 h-full md:pl-60 overflow-hidden">
           {children}
         </main>
       </div>

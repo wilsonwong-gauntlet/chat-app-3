@@ -112,8 +112,8 @@ export default async function ChannelPage({
   }
 
   return (
-    <div className="bg-white flex flex-col h-full">
-      <div className="px-6 h-14 flex items-center justify-between border-b border-zinc-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/50">
+    <div className="flex flex-col h-full">
+      <div className="px-6 h-14 flex items-center justify-between border-b border-zinc-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/50 sticky top-0 z-10">
         <div className="flex items-center gap-2">
           <h2 className="text-base font-medium flex items-center">
             {channel.type === ChannelType.DIRECT ? (
@@ -142,13 +142,13 @@ export default async function ChannelPage({
           )}
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto min-h-0">
         <MessageList
           channelId={channel.id}
           initialMessages={channel.messages}
         />
       </div>
-      <div className="mt-auto">
+      <div className="mt-auto px-4 pb-6">
         <MessageInput
           channelId={channel.id}
         />
