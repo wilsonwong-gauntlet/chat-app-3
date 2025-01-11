@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
 
 import { db } from "@/lib/db";
+import { getCurrentUser } from "@/lib/current-user";
 
 const createWorkspaceSchema = z.object({
   name: z.string().min(1).max(32).regex(/^[a-zA-Z0-9-\s]+$/)
@@ -10,19 +11,10 @@ const createWorkspaceSchema = z.object({
 
 export async function GET() {
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-
-    // Get the user from our database
-    const dbUser = await db.user.findUnique({
-      where: { clerkId: userId }
-    });
+    const dbUser = await getCurrentUser();
 
     if (!dbUser) {
-      return new NextResponse("User not found", { status: 404 });
+      return new NextResponse("Unauthorized", { status: 401 });
     }
 
     // Get all workspaces where the user is a member
@@ -49,23 +41,14 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
+    const dbUser = await getCurrentUser();
 
-    if (!userId) {
+    if (!dbUser) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
     const body = await req.json();
     const { name } = createWorkspaceSchema.parse(body);
-
-    // Get the user from our database
-    const dbUser = await db.user.findUnique({
-      where: { clerkId: userId }
-    });
-
-    if (!dbUser) {
-      return new NextResponse("User not found", { status: 404 });
-    }
 
     // Check if user already has a workspace with this name
     const existingWorkspace = await db.workspace.findFirst({
@@ -115,10 +98,6 @@ export async function POST(req: Request) {
     return NextResponse.json(workspace);
   } catch (error) {
     console.error("[WORKSPACES_POST]", error);
-    if (error instanceof z.ZodError) {
-      return new NextResponse("Invalid request data", { status: 422 });
-    }
-
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
