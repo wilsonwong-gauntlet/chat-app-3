@@ -3,27 +3,22 @@
 import { Channel, ChannelMember } from "@/types";
 import { ChannelsList } from "./channels-list";
 import { DirectMessagesList } from "./direct-messages-list";
-import { Settings, ChevronDown, Users } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { UserAvatar } from "@/components/user-avatar";
-import { UserStatusDialog } from "@/components/user-status-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuGroup,
-  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useWorkspace } from "@/providers/workspace-provider";
-import { usePresence } from "@/providers/presence-provider";
-import { useUser } from "@clerk/nextjs";
 import { useModal } from "@/hooks/use-modal-store";
 import { UserMenu } from "@/components/user-menu";
+import { cn } from "@/lib/utils";
 
 interface WorkspaceSidebarProps {
   channels: (Channel & {
@@ -75,15 +70,18 @@ export function WorkspaceSidebar({
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="w-full justify-between px-3 hover:bg-zinc-700/10 dark:hover:bg-zinc-700/50"
+              className="w-full justify-between px-3 py-5 hover:bg-zinc-700/10 dark:hover:bg-zinc-700/50 font-semibold"
             >
-              <span className="font-semibold truncate">
-                {workspace.name}
-              </span>
+              {workspace.name}
               <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" align="start" alignOffset={11} forceMount>
+          <DropdownMenuContent 
+            className="w-56" 
+            align="start" 
+            alignOffset={11} 
+            forceMount
+          >
             <DropdownMenuItem
               className="w-full cursor-pointer px-3 py-2 text-sm"
               onClick={() => router.push("/workspaces")}
@@ -108,12 +106,23 @@ export function WorkspaceSidebar({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <ScrollArea className="flex-1">
-        <ChannelsList channels={channels} />
-        <DirectMessagesList channels={channels} members={members} />
+      <ScrollArea className="flex-1 px-2">
+        <div className="space-y-6 py-4">
+          <div className="space-y-2">
+            <ChannelsList channels={channels} />
+          </div>
+          <div className="space-y-2">
+            <DirectMessagesList channels={channels} members={members} />
+          </div>
+        </div>
       </ScrollArea>
-      <div className="mt-auto p-2 border-t border-t-zinc-200 dark:border-t-zinc-700">
-        <UserMenu />
+      <div className="mt-auto border-t border-t-zinc-200 dark:border-t-zinc-700">
+        <div className={cn(
+          "p-2 mx-2 my-2 rounded-md transition-colors",
+          "hover:bg-zinc-700/10 dark:hover:bg-zinc-700/50"
+        )}>
+          <UserMenu />
+        </div>
       </div>
     </div>
   );

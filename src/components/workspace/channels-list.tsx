@@ -1,6 +1,6 @@
 "use client";
 
-import { Lock, Plus } from "lucide-react";
+import { Lock, Plus, Hash } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { useModal } from "@/hooks/use-modal-store";
 import { Channel, ChannelType, ChannelMember } from "@/types";
 import { useWorkspace } from "@/providers/workspace-provider";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ChannelsListProps {
   channels: (Channel & {
@@ -33,80 +32,62 @@ export function ChannelsList({ channels }: ChannelsListProps) {
 
   const regularChannels = channels.filter(
     channel => {
-      // Filter out direct messages
       if (channel.type === ChannelType.DIRECT) return false;
-      
-      // For private channels, only show if user is a member
       if (channel.type === ChannelType.PRIVATE) {
         return channel.members.some(member => member.user.clerkId === user?.id);
       }
-      
-      // Show all public channels
       return true;
     }
   );
 
   const handleCreateChannel = () => {
     if (!workspace) return;
-    onOpen("createChannel", { workspaceId: workspace.id });
+    onOpen("createChannel");
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-between py-2">
-        <h2 className="text-sm font-semibold text-muted-foreground px-2">
+    <div className="space-y-2">
+      <div className="flex items-center justify-between px-2">
+        <h2 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
           Channels
         </h2>
         <Button
           onClick={handleCreateChannel}
           size="icon"
           variant="ghost"
-          className="h-4 w-4 mr-2"
+          className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity"
         >
           <Plus className="h-4 w-4" />
         </Button>
       </div>
-      <ul className="space-y-[2px]">
-        {regularChannels.map((channel) => (
-          <li key={channel.id}>
-            <div className="group relative flex items-center">
-              <Link
-                href={`/workspaces/${params?.workspaceId}/channels/${channel.id}`}
-                className={cn(
-                  "flex-1 flex items-center px-2 py-2 hover:bg-zinc-700/10 dark:hover:bg-zinc-700/50 rounded-md mx-2 gap-x-2",
-                  params?.channelId === channel.id && "bg-zinc-700/20 dark:bg-zinc-700"
-                )}
-              >
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="flex items-center gap-x-2">
-                        <span className="text-zinc-500 dark:text-zinc-400 transition group-hover:text-zinc-600 dark:group-hover:text-zinc-300">
-                          {channel.type === ChannelType.PRIVATE ? (
-                            <Lock className="h-3 w-3" />
-                          ) : (
-                            "#"
-                          )}
-                        </span>
-                        <span className="truncate text-sm text-zinc-500 dark:text-zinc-400 transition group-hover:text-zinc-600 dark:group-hover:text-zinc-300">
-                          {channel.name}
-                        </span>
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">
-                      {channel.type === ChannelType.PRIVATE ? (
-                        <p>Private Channel - Only invited members can access</p>
-                      ) : (
-                        <p>Public Channel - Anyone in the workspace can join</p>
-                      )}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </Link>
-            </div>
-          </li>
-        ))}
-      </ul>
+      <div className="space-y-[2px]">
+        {regularChannels.map((channel) => {
+          const isActive = params.channelId === channel.id;
+
+          return (
+            <Link
+              key={channel.id}
+              href={`/workspaces/${params.workspaceId}/channels/${channel.id}`}
+              className={cn(
+                "group flex items-center gap-x-2 px-2 py-1.5 rounded-md w-full hover:bg-zinc-700/10 dark:hover:bg-zinc-700/50 transition-colors",
+                isActive && "bg-zinc-700/10 dark:bg-zinc-700/50"
+              )}
+            >
+              {channel.type === ChannelType.PRIVATE ? (
+                <Lock className="flex-shrink-0 w-4 h-4 text-zinc-500 dark:text-zinc-400" />
+              ) : (
+                <Hash className="flex-shrink-0 w-4 h-4 text-zinc-500 dark:text-zinc-400" />
+              )}
+              <span className={cn(
+                "text-sm text-zinc-500 dark:text-zinc-400 truncate",
+                isActive && "text-zinc-700 dark:text-zinc-300 font-medium"
+              )}>
+                {channel.name}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 } 
