@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { ClerkProvider, SignedIn, UserButton } from "@clerk/nextjs";
+import { ClerkProvider, SignedIn } from "@clerk/nextjs";
 
 import { ThemeProvider } from "@/providers/theme-provider";
 import { ModalProvider } from "@/providers/modal-provider";
+import { UserButtonWrapper } from "@/components/user-button-wrapper";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -37,16 +38,7 @@ export default function RootLayout({
             storageKey="slack-theme"
           >
             <SignedIn>
-              <div className="fixed top-4 right-4 z-50">
-                <UserButton 
-                  afterSignOutUrl="/"
-                  appearance={{
-                    elements: {
-                      avatarBox: "h-8 w-8"
-                    }
-                  }}
-                />
-              </div>
+              <UserButtonWrapper />
               <ModalProvider />
             </SignedIn>
             {children}

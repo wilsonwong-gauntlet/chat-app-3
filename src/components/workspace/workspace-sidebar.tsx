@@ -70,9 +70,6 @@ export function WorkspaceSidebar({
 
   return (
     <div className="flex flex-col h-full w-60 bg-zinc-50 dark:bg-zinc-900 border-r border-r-zinc-200 dark:border-r-zinc-700">
-      <div className="p-2">
-        <UserMenu />
-      </div>
       <div className="p-2 border-b border-b-zinc-200 dark:border-b-zinc-700">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -115,6 +112,9 @@ export function WorkspaceSidebar({
         <ChannelsList channels={channels} />
         <DirectMessagesList channels={channels} members={members} />
       </ScrollArea>
+      <div className="mt-auto p-2 border-t border-t-zinc-200 dark:border-t-zinc-700">
+        <UserMenu />
+      </div>
     </div>
   );
 } 
