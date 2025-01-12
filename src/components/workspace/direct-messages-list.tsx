@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useModal } from "@/hooks/use-modal-store";
 import { Channel, ChannelType, ChannelMember } from "@/types";
+import { UserAvatar } from "@/components/user-avatar";
+import { usePresence } from "@/providers/presence-provider";
 
 interface DirectMessagesListProps {
   channels: (Channel & {
@@ -28,6 +30,7 @@ export function DirectMessagesList({ channels }: DirectMessagesListProps) {
   const params = useParams();
   const { user: currentUser } = useUser();
   const { onOpen } = useModal();
+  const { onlineUsers } = usePresence();
 
   const dmChannels = channels.filter(channel => channel.type === ChannelType.DIRECT);
 
@@ -66,21 +69,28 @@ export function DirectMessagesList({ channels }: DirectMessagesListProps) {
       <ul className="space-y-[2px]">
         {dmChannels.map((channel) => {
           const otherUser = getOtherUser(channel);
+          if (!otherUser) return null;
+
           return (
             <li key={channel.id}>
               <Link
                 href={`/workspaces/${params?.workspaceId}/channels/${channel.id}`}
                 className={cn(
-                  "group relative flex items-center px-2 py-2 hover:bg-zinc-700/10 dark:hover:bg-zinc-700/50 rounded-md mx-2 gap-x-2",
+                  "group relative flex items-center px-2 py-2 hover:bg-zinc-700/10 dark:hover:bg-zinc-700/50 rounded-md mx-2",
                   params?.channelId === channel.id && "bg-zinc-700/20 dark:bg-zinc-700"
                 )}
               >
-                <span className="text-zinc-500 dark:text-zinc-400 transition group-hover:text-zinc-600 dark:group-hover:text-zinc-300">
-                  @
-                </span>
-                <span className="truncate text-sm text-zinc-500 dark:text-zinc-400 transition group-hover:text-zinc-600 dark:group-hover:text-zinc-300">
-                  {otherUser?.name || "Unknown User"}
-                </span>
+                <div className="flex items-center gap-x-2 w-full">
+                  <UserAvatar
+                    userId={otherUser.id}
+                    imageUrl={otherUser.imageUrl}
+                    name={otherUser.name}
+                    className="h-6 w-6"
+                  />
+                  <span className="truncate text-sm text-zinc-500 dark:text-zinc-400 transition group-hover:text-zinc-600 dark:group-hover:text-zinc-300">
+                    {otherUser.name}
+                  </span>
+                </div>
               </Link>
             </li>
           );

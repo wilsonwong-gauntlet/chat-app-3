@@ -4,6 +4,10 @@ export interface User {
   email: string;
   name: string;
   imageUrl?: string | null;
+  status?: string | null;
+  presence?: PresenceStatus;
+  lastSeen?: Date;
+  isActive?: boolean;
 }
 
 export interface Channel {
@@ -90,4 +94,11 @@ export interface WorkspaceWithRelations extends Workspace {
       user: User;
     })[];
   })[];
+}
+
+export enum PresenceStatus {
+  ONLINE = "ONLINE",
+  OFFLINE = "OFFLINE",
+  AWAY = "AWAY",
+  DND = "DND"
 } 

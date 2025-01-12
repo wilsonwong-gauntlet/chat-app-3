@@ -6,7 +6,8 @@ import { DirectMessagesList } from "./direct-messages-list";
 import { StartDMDialog } from "./start-dm-dialog";
 import { Settings, ChevronDown, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { UserButton } from "@clerk/nextjs";
+import { UserAvatar } from "@/components/user-avatar";
+import { UserStatusDialog } from "@/components/user-status-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,7 +21,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useWorkspace } from "@/providers/workspace-provider";
-import { formatDistanceToNow } from "date-fns";
+import { usePresence } from "@/providers/presence-provider";
+import { useUser } from "@clerk/nextjs";
 import { useModal } from "@/hooks/use-modal-store";
 
 interface WorkspaceSidebarProps {
@@ -63,28 +65,41 @@ export function WorkspaceSidebar({
   const router = useRouter();
   const { onOpen } = useModal();
   const { workspace } = useWorkspace();
+  const { user } = useUser();
+  const { onlineUsers } = usePresence();
 
-  if (!workspace) return null;
+  if (!workspace || !user) return null;
+
+  const currentUserPresence = onlineUsers[user.id]?.presence || "OFFLINE";
+  const currentUserStatus = onlineUsers[user.id]?.status;
 
   return (
     <div className="flex flex-col h-full text-primary w-full dark:bg-[#2B2D31] bg-[#F2F3F5]">
       <div className="p-3 flex items-center gap-2">
-        <div className="rounded-md bg-zinc-100 dark:bg-zinc-800 p-1">
-          <UserButton
-            afterSignOutUrl="/"
-            appearance={{
-              elements: {
-                avatarBox: "h-8 w-8"
-              }
-            }}
-          />
-        </div>
+        <UserStatusDialog
+          trigger={
+            <div className="rounded-md bg-zinc-100 dark:bg-zinc-800 p-1 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">
+              <UserAvatar
+                userId={user.id}
+                imageUrl={user.imageUrl || ""}
+                name={user.fullName || user.username || "User"}
+              />
+            </div>
+          }
+        />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex-1 flex items-center justify-between p-2 rounded-md hover:bg-zinc-700/10 dark:hover:bg-zinc-700/50 transition">
-              <h2 className="text-lg font-semibold truncate">
-                {workspace.name}
-              </h2>
+              <div className="flex flex-col items-start">
+                <h2 className="text-lg font-semibold truncate">
+                  {workspace.name}
+                </h2>
+                {currentUserStatus && (
+                  <p className="text-xs text-muted-foreground truncate">
+                    {currentUserStatus}
+                  </p>
+                )}
+              </div>
               <ChevronDown className="h-4 w-4 text-zinc-500" />
             </button>
           </DropdownMenuTrigger>
@@ -113,8 +128,10 @@ export function WorkspaceSidebar({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <ChannelsList channels={channels} />
-      <DirectMessagesList channels={channels} />
+      <ScrollArea className="flex-1">
+        <ChannelsList channels={channels} />
+        <DirectMessagesList channels={channels} />
+      </ScrollArea>
       <StartDMDialog members={members} />
     </div>
   );
