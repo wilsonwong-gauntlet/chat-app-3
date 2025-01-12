@@ -1,80 +1,41 @@
-import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
+import { notFound } from "next/navigation";
 
 import { db } from "@/lib/db";
-import { ChannelType, ChannelMember } from "@/types";
+import { Channel, ChannelType, Message, User } from "@/types";
 import { MessageList } from "@/components/chat/message-list";
 import { MessageInput } from "@/components/chat/message-input";
+import { ChannelHeader } from "@/components/channel/channel-header";
 
-async function getChannel(workspaceId: string, channelId: string, userId: string) {
-  // First get the database user
-  const dbUser = await db.user.findUnique({
-    where: { clerkId: userId }
-  });
-
-  if (!dbUser) {
-    return null;
-  }
-
-  const channel = await db.channel.findUnique({
-    where: {
-      id: channelId,
-      workspaceId: workspaceId,
-    },
-    include: {
-      members: {
-        include: {
-          user: true
-        }
-      },
-      messages: {
-        include: {
-          user: true,
-          reactions: {
-            include: {
-              user: true
-            }
-          },
-          replies: {
-            include: {
-              user: true,
-              reactions: {
-                include: {
-                  user: true
-                }
-              }
-            }
-          }
-        },
-        orderBy: {
-          createdAt: "desc"
-        },
-        take: 50
-      }
-    }
-  });
-
-  if (!channel) {
-    return null;
-  }
-
-  // For private channels, check if user is a member
-  if (channel.type === ChannelType.PRIVATE) {
-    const isMember = channel.members.some((member: ChannelMember) => member.user.clerkId === userId);
-    if (!isMember) {
-      return "PRIVATE_NO_ACCESS";
-    }
-  }
-
-  return {
-    ...channel,
-    messages: channel.messages.reverse()
-  };
+interface ChannelWithMembersAndMessages extends Channel {
+  members: {
+    id: string;
+    userId: string;
+    channelId: string;
+    createdAt: Date;
+    updatedAt: Date;
+    user: {
+      id: string;
+      name: string;
+      email: string;
+      imageUrl: string | null;
+      clerkId: string;
+    };
+  }[];
+  messages: (Message & {
+    user: User;
+    replies: (Message & {
+      user: User;
+    })[];
+    _count: {
+      replies: number;
+    };
+  })[];
 }
 
-function getOtherParticipantName(members: ChannelMember[], currentUserId: string) {
-  const otherMember = members.find(member => member.user.clerkId !== currentUserId);
-  return otherMember?.user.name || 'Unknown User';
+function getOtherParticipantName(members: any[], userId: string) {
+  const otherMember = members.find(member => member.user.id !== userId);
+  return otherMember?.user.name || "Unknown User";
 }
 
 export default async function ChannelPage({
@@ -85,63 +46,56 @@ export default async function ChannelPage({
   const { userId } = await auth();
 
   if (!userId) {
-    redirect("/sign-in");
+    return notFound();
   }
 
-  // Decode the IDs from the URL
-  const decodedWorkspaceId = decodeURIComponent(params.workspaceId);
-  const decodedChannelId = decodeURIComponent(params.channelId);
-
-  const channel = await getChannel(decodedWorkspaceId, decodedChannelId, userId);
+  const channel = await db.channel.findUnique({
+    where: {
+      id: params.channelId,
+    },
+    include: {
+      members: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              imageUrl: true,
+              clerkId: true,
+            }
+          }
+        }
+      },
+      messages: {
+        take: 50,
+        orderBy: {
+          createdAt: "desc"
+        },
+        include: {
+          user: true,
+          replies: {
+            include: {
+              user: true
+            }
+          },
+          _count: {
+            select: {
+              replies: true
+            }
+          }
+        }
+      }
+    }
+  }) as ChannelWithMembersAndMessages | null;
 
   if (!channel) {
-    redirect(`/workspaces/${decodedWorkspaceId}`);
-  }
-
-  // Handle private channel access denied
-  if (channel === "PRIVATE_NO_ACCESS") {
-    // TODO: Add a proper UI for access denied
-    // For now, redirect to workspace home
-    redirect(`/workspaces/${decodedWorkspaceId}`);
-  }
-
-  const currentMember = channel.members.find((member: ChannelMember) => member.user.clerkId === userId);
-
-  if (!currentMember) {
-    redirect(`/workspaces/${decodedWorkspaceId}`);
+    return notFound();
   }
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-6 h-14 flex items-center justify-between border-b border-zinc-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/50 sticky top-0 z-10">
-        <div className="flex items-center gap-2">
-          <h2 className="text-base font-medium flex items-center">
-            {channel.type === ChannelType.DIRECT ? (
-              <>
-                <span className="text-zinc-400 mr-2">@</span>
-                {getOtherParticipantName(channel.members, userId)}
-              </>
-            ) : (
-              <>
-                {channel.type === ChannelType.PRIVATE ? (
-                  <span className="text-zinc-400 mr-2">🔒</span>
-                ) : (
-                  <span className="text-zinc-400 mr-2">#</span>
-                )}
-                {channel.name}
-              </>
-            )}
-          </h2>
-          {channel.description && channel.type !== ChannelType.DIRECT && (
-            <>
-              <div className="h-4 w-[1px] bg-zinc-200" />
-              <span className="text-sm text-zinc-500">
-                {channel.description}
-              </span>
-            </>
-          )}
-        </div>
-      </div>
+      <ChannelHeader channel={channel} />
       <div className="flex-1 overflow-y-auto min-h-0">
         <MessageList
           channelId={channel.id}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Lock, Plus, Settings } from "lucide-react";
+import { Lock, Plus } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
@@ -49,19 +49,6 @@ export function ChannelsList({ channels }: ChannelsListProps) {
   const handleCreateChannel = () => {
     if (!workspace) return;
     onOpen("createChannel", { workspaceId: workspace.id });
-  };
-
-  const handleChannelSettings = (channel: Channel & {
-    members: (ChannelMember & {
-      user: {
-        id: string;
-        name: string;
-        imageUrl: string | null;
-        clerkId: string;
-      };
-    })[];
-  }) => {
-    onOpen("channelSettings", { channel });
   };
 
   return (
@@ -116,16 +103,6 @@ export function ChannelsList({ channels }: ChannelsListProps) {
                   </Tooltip>
                 </TooltipProvider>
               </Link>
-              <div className="absolute right-2 hidden group-hover:flex items-center gap-x-2">
-                <Button
-                  onClick={() => handleChannelSettings(channel)}
-                  size="icon"
-                  variant="ghost"
-                  className="h-4 w-4"
-                >
-                  <Settings className="h-3 w-3" />
-                </Button>
-              </div>
             </div>
           </li>
         ))}

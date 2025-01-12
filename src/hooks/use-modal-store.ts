@@ -1,7 +1,7 @@
 import { Channel } from "@/types";
 import { create } from "zustand";
 
-export type ModalType = "createChannel" | "channelSettings" | "members" | "startDM" | "createWorkspace";
+export type ModalType = "createChannel" | "members" | "startDM" | "createWorkspace" | "channelDetails" | "addPeople";
 
 interface ModalData {
   channel?: Channel;
