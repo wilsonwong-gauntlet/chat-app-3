@@ -22,6 +22,12 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  // Presence fields
+  presence      PresenceStatus  @default(OFFLINE)
+  status        String?
+  lastSeen      DateTime       @default(now())
+  isActive      Boolean        @default(false)
+
   // Relationships
   workspaces    WorkspaceMember[]
   messages      Message[]
@@ -137,4 +143,11 @@ enum ChannelType {
   PUBLIC
   PRIVATE
   DIRECT
+}
+
+enum PresenceStatus {
+  ONLINE
+  OFFLINE
+  AWAY
+  DND
 }

@@ -27,7 +27,7 @@ export async function POST(req: Request) {
       data: {
         presence: presence as PresenceStatus,
         lastSeen: new Date(),
-        isActive: presence === "ONLINE",
+        isActive: presence === PresenceStatus.ONLINE,
       },
       select: {
         id: true,
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       },
     });
 
-    // Broadcast presence update to workspace
+    // Broadcast presence update to workspace channel
     await pusherServer.trigger(
       `presence-workspace-${workspaceId}`,
       "presence:update",
@@ -53,6 +53,12 @@ export async function POST(req: Request) {
         isActive: user.isActive,
       }
     );
+
+    console.log("[PRESENCE_POST] Updated presence for user", {
+      userId: user.id,
+      presence: user.presence,
+      workspaceId,
+    });
 
     return NextResponse.json(user);
   } catch (error) {
