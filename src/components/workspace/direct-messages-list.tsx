@@ -4,15 +4,14 @@ import { Plus, Pin, X } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { useModal } from "@/hooks/use-modal-store";
-import { Channel, ChannelType, ChannelMember } from "@/types";
+import { Channel, ChannelType, ChannelMember, User } from "@/types";
 import { UserAvatar } from "@/components/user-avatar";
 import { usePresence } from "@/providers/presence-provider";
+import { MemberListPopover } from "./member-list-popover";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,12 +30,14 @@ interface DirectMessagesListProps {
       };
     })[];
   })[];
+  members: {
+    user: User;
+  }[];
 }
 
-export function DirectMessagesList({ channels }: DirectMessagesListProps) {
+export function DirectMessagesList({ channels, members }: DirectMessagesListProps) {
   const params = useParams();
   const { user: currentUser } = useUser();
-  const { onOpen } = useModal();
   const { onlineUsers } = usePresence();
   const [pinnedDMs, setPinnedDMs] = useState<string[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -59,37 +60,6 @@ export function DirectMessagesList({ channels }: DirectMessagesListProps) {
     return otherMember?.user;
   };
 
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        onOpen("startDM");
-      }
-      
-      // Arrow key navigation for DM list
-      if (document.activeElement?.tagName === "BODY") {
-        if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-          e.preventDefault();
-          const currentIndex = dmChannels.findIndex(c => c.id === selectedId);
-          const nextIndex = e.key === "ArrowUp" 
-            ? Math.max(0, currentIndex - 1)
-            : Math.min(dmChannels.length - 1, currentIndex + 1);
-          setSelectedId(dmChannels[nextIndex]?.id || null);
-        }
-        if (e.key === "Enter" && selectedId) {
-          const channel = dmChannels.find(c => c.id === selectedId);
-          if (channel) {
-            window.location.href = `/workspaces/${params.workspaceId}/channels/${channel.id}`;
-          }
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [dmChannels, selectedId, onOpen, params.workspaceId]);
-
   const sortedChannels = [...dmChannels].sort((a, b) => {
     // Pinned items first
     if (pinnedDMs.includes(a.id) && !pinnedDMs.includes(b.id)) return -1;
@@ -101,16 +71,21 @@ export function DirectMessagesList({ channels }: DirectMessagesListProps) {
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between px-2 py-1">
+      <div className="flex items-center justify-between px-2 py-1 group">
         <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Direct Messages</h2>
-        <Button
-          onClick={() => onOpen("startDM")}
-          size="icon"
-          variant="ghost"
-          className="h-4 w-4 -mr-2 opacity-0 group-hover:opacity-100 transition-opacity"
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
+        <MemberListPopover
+          members={members}
+          trigger={
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity"
+              title="Start a conversation"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          }
+        />
       </div>
 
       <div className="space-y-[2px]">

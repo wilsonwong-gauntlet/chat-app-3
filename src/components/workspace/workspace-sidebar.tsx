@@ -3,7 +3,6 @@
 import { Channel, ChannelMember } from "@/types";
 import { ChannelsList } from "./channels-list";
 import { DirectMessagesList } from "./direct-messages-list";
-import { StartDMDialog } from "./start-dm-dialog";
 import { Settings, ChevronDown, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/user-avatar";
@@ -130,9 +129,8 @@ export function WorkspaceSidebar({
       </div>
       <ScrollArea className="flex-1">
         <ChannelsList channels={channels} />
-        <DirectMessagesList channels={channels} />
+        <DirectMessagesList channels={channels} members={members} />
       </ScrollArea>
-      <StartDMDialog members={members} />
     </div>
   );
 } 
