@@ -91,9 +91,9 @@ export function DirectMessagesList({ channels, members }: DirectMessagesListProp
       <div className="space-y-[2px]">
         {sortedChannels.map((channel) => {
           const otherUser = getOtherUser(channel);
-          const isOnline = otherUser?.clerkId ? 
-            onlineUsers[otherUser.clerkId]?.presence === "ONLINE" : 
-            false;
+          const presence = otherUser?.clerkId ? 
+            onlineUsers[otherUser.clerkId]?.presence || "OFFLINE" : 
+            "OFFLINE";
           const isActive = params.channelId === channel.id;
           const isPinned = pinnedDMs.includes(channel.id);
 
@@ -120,7 +120,10 @@ export function DirectMessagesList({ channels, members }: DirectMessagesListProp
                   />
                   <div className={cn(
                     "absolute bottom-0 right-0 h-2 w-2 rounded-full border border-zinc-800",
-                    isOnline ? "bg-emerald-500" : "bg-zinc-500"
+                    presence === "ONLINE" && "bg-emerald-500",
+                    presence === "AWAY" && "bg-yellow-500",
+                    presence === "DND" && "bg-rose-500",
+                    presence === "OFFLINE" && "bg-zinc-500"
                   )} />
                 </div>
                 <span className="truncate text-sm text-zinc-300">

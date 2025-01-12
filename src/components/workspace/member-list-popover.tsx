@@ -115,7 +115,7 @@ export function MemberListPopover({ members, trigger }: MemberListPopoverProps) 
         <ScrollArea className="max-h-80">
           <div className="p-2 space-y-1">
             {filteredMembers.map((member) => {
-              const isOnline = onlineUsers[member.user.clerkId]?.presence === "ONLINE";
+              const presence = onlineUsers[member.user.clerkId]?.presence || "OFFLINE";
               const isLoading = loadingUserId === member.user.id;
               
               return (
@@ -137,8 +137,11 @@ export function MemberListPopover({ members, trigger }: MemberListPopoverProps) 
                       className="h-8 w-8"
                     />
                     <div className={cn(
-                      "absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-zinc-800",
-                      isOnline ? "bg-emerald-500" : "bg-zinc-500"
+                      "absolute bottom-0 right-0 h-2 w-2 rounded-full border border-white dark:border-zinc-900",
+                      presence === "ONLINE" && "bg-emerald-500",
+                      presence === "AWAY" && "bg-yellow-500",
+                      presence === "DND" && "bg-rose-500",
+                      presence === "OFFLINE" && "bg-zinc-500"
                     )} />
                   </div>
                   <div className="flex flex-col items-start flex-1 min-w-0">
@@ -149,7 +152,7 @@ export function MemberListPopover({ members, trigger }: MemberListPopoverProps) 
                       {member.user.email}
                     </span>
                   </div>
-                  {isOnline && (
+                  {presence === "ONLINE" && (
                     <span className="text-xs text-emerald-500 font-medium">
                       online
                     </span>

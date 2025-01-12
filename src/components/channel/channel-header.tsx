@@ -38,9 +38,9 @@ export function ChannelHeader({ channel }: ChannelHeaderProps) {
     
     if (!otherMember) return null;
 
-    const isOnline = otherMember.user.clerkId ? 
-      onlineUsers[otherMember.user.clerkId]?.presence === "ONLINE" : 
-      false;
+    const presence = otherMember.user.clerkId ? 
+      onlineUsers[otherMember.user.clerkId]?.presence : 
+      null;
     
     return (
       <header className="h-12 border-b flex items-center px-4 bg-white dark:bg-zinc-900">
@@ -50,11 +50,14 @@ export function ChannelHeader({ channel }: ChannelHeaderProps) {
               userId={otherMember.user.id}
               imageUrl={otherMember.user.imageUrl}
               name={otherMember.user.name}
-              className="h-6 w-6"
+              className="h-8 w-8"
             />
             <div className={cn(
               "absolute bottom-0 right-0 h-2 w-2 rounded-full border border-white dark:border-zinc-900",
-              isOnline ? "bg-emerald-500" : "bg-zinc-500"
+              presence === "ONLINE" && "bg-emerald-500",
+              presence === "AWAY" && "bg-yellow-500",
+              presence === "DND" && "bg-rose-500",
+              presence === "OFFLINE" && "bg-zinc-500"
             )} />
           </div>
           <span className="font-semibold text-md text-zinc-500 dark:text-zinc-400">
