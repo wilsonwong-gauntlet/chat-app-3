@@ -4,6 +4,10 @@ import { Hash, Lock } from "lucide-react";
 import { useModal } from "@/hooks/use-modal-store";
 import { Channel, ChannelMember, ChannelType } from "@/types";
 import { Button } from "@/components/ui/button";
+import { UserAvatar } from "@/components/user-avatar";
+import { useUser } from "@clerk/nextjs";
+import { usePresence } from "@/providers/presence-provider";
+import { cn } from "@/lib/utils";
 
 interface ChannelHeaderProps {
   channel: Channel & {
@@ -20,10 +24,46 @@ interface ChannelHeaderProps {
 
 export function ChannelHeader({ channel }: ChannelHeaderProps) {
   const { onOpen } = useModal();
+  const { user } = useUser();
+  const { onlineUsers } = usePresence();
 
   const handleChannelClick = () => {
     onOpen("channelDetails", { channel });
   };
+
+  if (channel.type === ChannelType.DIRECT) {
+    const otherMember = channel.members.find(
+      member => member.user.clerkId !== user?.id
+    );
+    
+    if (!otherMember) return null;
+
+    const isOnline = otherMember.user.clerkId ? 
+      onlineUsers[otherMember.user.clerkId]?.presence === "ONLINE" : 
+      false;
+    
+    return (
+      <header className="h-12 border-b flex items-center px-4 bg-white dark:bg-zinc-900">
+        <div className="flex items-center gap-x-2">
+          <div className="relative">
+            <UserAvatar
+              userId={otherMember.user.id}
+              imageUrl={otherMember.user.imageUrl}
+              name={otherMember.user.name}
+              className="h-6 w-6"
+            />
+            <div className={cn(
+              "absolute bottom-0 right-0 h-2 w-2 rounded-full border border-white dark:border-zinc-900",
+              isOnline ? "bg-emerald-500" : "bg-zinc-500"
+            )} />
+          </div>
+          <span className="font-semibold text-md text-zinc-500 dark:text-zinc-400">
+            {otherMember.user.name}
+          </span>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className="h-12 border-b flex items-center px-4 justify-between bg-white dark:bg-zinc-900">
