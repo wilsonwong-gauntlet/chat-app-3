@@ -2,10 +2,26 @@ import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 
 import { db } from "@/lib/db";
+import { Role } from "@prisma/client";
 import { WorkspaceNameForm } from "@/components/workspace/workspace-name-form";
 import { AddMemberForm } from "@/components/workspace/add-member-form";
-import { WorkspaceMember, MemberRole } from "@/types";
-import { WorkspaceSwitcher } from "@/components/workspace/workspace-switcher";
+import { DeleteWorkspaceButton } from "@/components/workspace/delete-workspace-button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger 
+} from "@/components/ui/tooltip";
+import { 
+  Shield, 
+  ShieldAlert, 
+  ShieldCheck, 
+  ShieldQuestion,
+  Settings,
+  Users
+} from "lucide-react";
 
 async function getWorkspace(workspaceId: string, userId: string) {
   const workspace = await db.workspace.findUnique({
@@ -20,6 +36,11 @@ async function getWorkspace(workspaceId: string, userId: string) {
         orderBy: {
           role: "asc"
         }
+      },
+      _count: {
+        select: {
+          channels: true
+        }
       }
     }
   });
@@ -30,7 +51,7 @@ async function getWorkspace(workspaceId: string, userId: string) {
 
   // Check if user is a member and an admin
   const member = workspace.members.find(
-    (member: WorkspaceMember) => member.user.clerkId === userId
+    (member) => member.user.clerkId === userId
   );
 
   if (!member) {
@@ -39,7 +60,7 @@ async function getWorkspace(workspaceId: string, userId: string) {
 
   return {
     ...workspace,
-    isAdmin: member.role === MemberRole.ADMIN
+    isAdmin: member.role === Role.ADMIN
   };
 }
 
@@ -54,23 +75,6 @@ export default async function WorkspaceSettingsPage({
     redirect("/sign-in");
   }
 
-  // Get all workspaces for the user
-  const workspaces = await db.workspace.findMany({
-    where: {
-      members: {
-        some: {
-          user: {
-            clerkId: userId
-          }
-        }
-      }
-    },
-    select: {
-      id: true,
-      name: true,
-    }
-  });
-
   // Decode the workspace ID from the URL
   const decodedWorkspaceId = decodeURIComponent(params.workspaceId);
   const workspace = await getWorkspace(decodedWorkspaceId, userId);
@@ -84,37 +88,65 @@ export default async function WorkspaceSettingsPage({
     redirect(`/workspaces/${decodedWorkspaceId}`);
   }
 
+  const getRoleBadge = (role: Role) => {
+    switch (role) {
+      case Role.ADMIN:
+        return <ShieldAlert className="h-4 w-4 text-rose-500" />;
+      case Role.MEMBER:
+        return <ShieldCheck className="h-4 w-4 text-emerald-500" />;
+      case Role.GUEST:
+        return <ShieldQuestion className="h-4 w-4 text-blue-500" />;
+      default:
+        return <Shield className="h-4 w-4" />;
+    }
+  };
+
   return (
-    <div className="h-full p-4 space-y-2">
-      <h2 className="text-2xl font-bold">Workspace Settings</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-4">
-          <div className="p-4 rounded-lg bg-white dark:bg-zinc-900 border">
-            <h3 className="text-xl font-semibold mb-4">General</h3>
-            <div className="space-y-4">
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center gap-2">
+          <Settings className="w-6 h-6" />
+          <h1 className="text-2xl font-bold">Workspace Settings</h1>
+        </div>
+      </div>
+      <ScrollArea className="flex-1 p-6">
+        <div className="max-w-4xl mx-auto space-y-8">
+          {/* General Settings */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-semibold">General</h2>
+            </div>
+            <div className="p-6 rounded-lg border bg-card">
               <WorkspaceNameForm
                 workspaceId={workspace.id}
                 initialName={workspace.name}
               />
-              <div className="pt-4 border-t">
-                <WorkspaceSwitcher
-                  currentWorkspaceId={workspace.id}
-                  workspaces={workspaces}
-                />
-              </div>
             </div>
           </div>
-          <div className="p-4 rounded-lg bg-white dark:bg-zinc-900 border">
-            <h3 className="text-xl font-semibold mb-4">Members</h3>
-            <div className="space-y-4">
+
+          {/* Members Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                <h2 className="text-xl font-semibold">Members</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-muted-foreground">
+                  {workspace.members.length} {workspace.members.length === 1 ? 'member' : 'members'}
+                </p>
+              </div>
+            </div>
+            <div className="p-6 rounded-lg border bg-card space-y-6">
               <AddMemberForm workspaceId={workspace.id} />
-              <div className="mt-6">
-                <h4 className="text-sm font-medium mb-2">Current Members</h4>
+              <Separator />
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium">Current Members</h3>
                 <div className="space-y-2">
-                  {workspace.members.map((member: WorkspaceMember) => (
+                  {workspace.members.map((member) => (
                     <div
                       key={member.id}
-                      className="flex items-center justify-between p-2 rounded-md bg-zinc-100 dark:bg-zinc-800"
+                      className="flex items-center justify-between p-2 rounded-md hover:bg-accent"
                     >
                       <div className="flex items-center gap-x-2">
                         <img
@@ -124,26 +156,53 @@ export default async function WorkspaceSettingsPage({
                         />
                         <div>
                           <p className="text-sm font-medium">{member.user.name}</p>
-                          <p className="text-xs text-zinc-500">{member.user.email}</p>
+                          <p className="text-xs text-muted-foreground">{member.user.email}</p>
                         </div>
                       </div>
-                      <span className="text-xs font-medium px-2 py-1 rounded-full bg-zinc-200 dark:bg-zinc-700">
-                        {member.role}
-                      </span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <div className="flex items-center gap-2">
+                              {getRoleBadge(member.role)}
+                              <span className="text-xs">{member.role}</span>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {member.role === Role.ADMIN ? "Can manage workspace settings and members" :
+                             member.role === Role.MEMBER ? "Can participate in all channels" :
+                             "Limited access to specific channels"}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
           </div>
-        </div>
-        <div className="space-y-4">
-          <div className="p-4 rounded-lg bg-white dark:bg-zinc-900 border">
-            <h3 className="text-xl font-semibold mb-4 text-rose-500">Danger Zone</h3>
-            {/* Delete workspace button will go here */}
+
+          {/* Danger Zone */}
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-destructive">Danger Zone</h2>
+            <div className="p-6 rounded-lg border border-destructive/20 bg-destructive/5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold">Delete Workspace</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Permanently delete {workspace.name} and all of its data
+                  </p>
+                </div>
+                <DeleteWorkspaceButton
+                  workspaceId={workspace.id}
+                  workspaceName={workspace.name}
+                  channelCount={workspace._count.channels}
+                  memberCount={workspace.members.length}
+                />
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </ScrollArea>
     </div>
   );
 } 
