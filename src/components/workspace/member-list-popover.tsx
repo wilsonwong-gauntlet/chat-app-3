@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/components/user-avatar";
 import { usePresence } from "@/providers/presence-provider";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/use-toast";
 
 interface MemberListPopoverProps {
   members: {
@@ -31,9 +32,11 @@ export function MemberListPopover({ members, trigger }: MemberListPopoverProps) 
   const params = useParams();
   const { user: currentUser } = useUser();
   const { onlineUsers } = usePresence();
+  const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingUserId, setLoadingUserId] = useState<string | null>(null);
 
   // Filter out current user and apply search
   const filteredMembers = members
@@ -41,21 +44,34 @@ export function MemberListPopover({ members, trigger }: MemberListPopoverProps) 
     .filter(member => 
       member.user.name.toLowerCase().includes(search.toLowerCase()) ||
       member.user.email.toLowerCase().includes(search.toLowerCase())
-    );
+    )
+    .sort((a, b) => {
+      // Online users first
+      const aOnline = onlineUsers[a.user.clerkId]?.presence === "ONLINE";
+      const bOnline = onlineUsers[b.user.clerkId]?.presence === "ONLINE";
+      if (aOnline && !bOnline) return -1;
+      if (!aOnline && bOnline) return 1;
+      
+      // Then alphabetically
+      return a.user.name.localeCompare(b.user.name);
+    });
 
-  const startDM = async (userId: string) => {
+  const startDM = async (member: { user: User }) => {
     try {
       setIsLoading(true);
+      setLoadingUserId(member.user.id);
+
       const response = await fetch(`/api/workspaces/${params.workspaceId}/direct-messages`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ userId: member.user.clerkId }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to create DM");
+        const error = await response.text();
+        throw new Error(error || "Failed to create conversation");
       }
 
       const channel = await response.json();
@@ -64,8 +80,14 @@ export function MemberListPopover({ members, trigger }: MemberListPopoverProps) 
       setIsOpen(false);
     } catch (error) {
       console.error(error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to start conversation",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
+      setLoadingUserId(null);
     }
   };
 
@@ -94,6 +116,7 @@ export function MemberListPopover({ members, trigger }: MemberListPopoverProps) 
           <div className="p-2 space-y-1">
             {filteredMembers.map((member) => {
               const isOnline = onlineUsers[member.user.clerkId]?.presence === "ONLINE";
+              const isLoading = loadingUserId === member.user.id;
               
               return (
                 <Button
@@ -104,7 +127,7 @@ export function MemberListPopover({ members, trigger }: MemberListPopoverProps) 
                     isLoading && "opacity-50 cursor-not-allowed"
                   )}
                   disabled={isLoading}
-                  onClick={() => startDM(member.user.id)}
+                  onClick={() => startDM(member)}
                 >
                   <div className="relative">
                     <UserAvatar
@@ -114,18 +137,23 @@ export function MemberListPopover({ members, trigger }: MemberListPopoverProps) 
                       className="h-8 w-8"
                     />
                     <div className={cn(
-                      "absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white",
+                      "absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-zinc-800",
                       isOnline ? "bg-emerald-500" : "bg-zinc-500"
                     )} />
                   </div>
-                  <div className="flex flex-col items-start">
-                    <span className="text-sm font-semibold">
+                  <div className="flex flex-col items-start flex-1 min-w-0">
+                    <span className="text-sm font-semibold truncate w-full">
                       {member.user.name}
                     </span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground truncate w-full">
                       {member.user.email}
                     </span>
                   </div>
+                  {isOnline && (
+                    <span className="text-xs text-emerald-500 font-medium">
+                      online
+                    </span>
+                  )}
                 </Button>
               );
             })}

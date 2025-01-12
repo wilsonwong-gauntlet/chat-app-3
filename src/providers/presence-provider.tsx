@@ -74,40 +74,16 @@ export function PresenceProvider({ children }: PresenceProviderProps) {
   }, [user, workspaceId]);
 
   useEffect(() => {
-    // Wait for Clerk to load the user
-    if (!isLoaded) {
-      console.log("[PRESENCE] Waiting for Clerk to load user");
-      return;
-    }
-
-    if (!workspaceId || !user) {
-      console.log("[PRESENCE] Missing workspaceId or user:", { 
-        workspaceId, 
-        userId: user?.id,
-        isLoaded 
-      });
-      return;
-    }
-
-    console.log("[PRESENCE] Attempting to subscribe to channel:", {
-      channel: `presence-workspace-${workspaceId}`,
-      userId: user.id
-    });
+    if (!isLoaded || !workspaceId || !user) return;
 
     // Subscribe to presence channel
     const channel = pusherClient.subscribe(`presence-workspace-${workspaceId}`);
 
     // Handle initial presence state
     channel.bind("pusher:subscription_succeeded", (members: any) => {
-      console.log("[PRESENCE] Subscription succeeded", {
-        members,
-        currentMembersCount: members.count,
-        channel: channel.name
-      });
       const initialUsers: typeof onlineUsers = {};
       members.each((member: any) => {
-        console.log("[PRESENCE] Adding member:", member);
-        initialUsers[member.id] = {
+        initialUsers[member.info.clerkId] = {
           ...member.info,
           presence: member.info.presence || PresenceStatus.ONLINE,
         };
@@ -115,22 +91,11 @@ export function PresenceProvider({ children }: PresenceProviderProps) {
       setOnlineUsers(initialUsers);
     });
 
-    // Handle subscription error
-    channel.bind("pusher:subscription_error", (error: any) => {
-      console.error("[PRESENCE] Subscription error details:", {
-        error,
-        channel: channel.name,
-        userId: user?.id,
-        workspaceId
-      });
-    });
-
     // Handle member added
     channel.bind("pusher:member_added", (member: any) => {
-      console.log("[PRESENCE] Member added", member);
       setOnlineUsers((current) => ({
         ...current,
-        [member.id]: {
+        [member.info.clerkId]: {
           ...member.info,
           presence: member.info.presence || PresenceStatus.ONLINE,
         },
@@ -139,17 +104,15 @@ export function PresenceProvider({ children }: PresenceProviderProps) {
 
     // Handle member removed
     channel.bind("pusher:member_removed", (member: any) => {
-      console.log("[PRESENCE] Member removed", member);
       setOnlineUsers((current) => {
         const updated = { ...current };
-        delete updated[member.id];
+        delete updated[member.info.clerkId];
         return updated;
       });
     });
 
     // Handle presence updates
     channel.bind("presence:update", ({ userId, presence, status }: any) => {
-      console.log("[PRESENCE] Update received", { userId, presence, status });
       setOnlineUsers((current) => ({
         ...current,
         [userId]: {
@@ -171,7 +134,6 @@ export function PresenceProvider({ children }: PresenceProviderProps) {
 
     // Cleanup
     return () => {
-      console.log("[PRESENCE] Cleaning up");
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       channel.unbind_all();
       pusherClient.unsubscribe(`presence-workspace-${workspaceId}`);
