@@ -23,6 +23,7 @@ import { useWorkspace } from "@/providers/workspace-provider";
 import { usePresence } from "@/providers/presence-provider";
 import { useUser } from "@clerk/nextjs";
 import { useModal } from "@/hooks/use-modal-store";
+import { UserMenu } from "@/components/user-menu";
 
 interface WorkspaceSidebarProps {
   channels: (Channel & {
@@ -61,46 +62,29 @@ export function WorkspaceSidebar({
   members,
   availableWorkspaces
 }: WorkspaceSidebarProps) {
-  const router = useRouter();
-  const { onOpen } = useModal();
   const { workspace } = useWorkspace();
-  const { user } = useUser();
-  const { onlineUsers } = usePresence();
+  const { onOpen } = useModal();
+  const router = useRouter();
 
-  if (!workspace || !user) return null;
-
-  const currentUserPresence = onlineUsers[user.id]?.presence || "OFFLINE";
-  const currentUserStatus = onlineUsers[user.id]?.status;
+  if (!workspace) return null;
 
   return (
-    <div className="flex flex-col h-full text-primary w-full dark:bg-[#2B2D31] bg-[#F2F3F5]">
-      <div className="p-3 flex items-center gap-2">
-        <UserStatusDialog
-          trigger={
-            <div className="rounded-md bg-zinc-100 dark:bg-zinc-800 p-1 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">
-              <UserAvatar
-                userId={user.id}
-                imageUrl={user.imageUrl || ""}
-                name={user.fullName || user.username || "User"}
-              />
-            </div>
-          }
-        />
+    <div className="flex flex-col h-full w-60 bg-zinc-50 dark:bg-zinc-900 border-r border-r-zinc-200 dark:border-r-zinc-700">
+      <div className="p-2">
+        <UserMenu />
+      </div>
+      <div className="p-2 border-b border-b-zinc-200 dark:border-b-zinc-700">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex-1 flex items-center justify-between p-2 rounded-md hover:bg-zinc-700/10 dark:hover:bg-zinc-700/50 transition">
-              <div className="flex flex-col items-start">
-                <h2 className="text-lg font-semibold truncate">
-                  {workspace.name}
-                </h2>
-                {currentUserStatus && (
-                  <p className="text-xs text-muted-foreground truncate">
-                    {currentUserStatus}
-                  </p>
-                )}
-              </div>
-              <ChevronDown className="h-4 w-4 text-zinc-500" />
-            </button>
+            <Button
+              variant="ghost"
+              className="w-full justify-between px-3 hover:bg-zinc-700/10 dark:hover:bg-zinc-700/50"
+            >
+              <span className="font-semibold truncate">
+                {workspace.name}
+              </span>
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="start" alignOffset={11} forceMount>
             <DropdownMenuItem
