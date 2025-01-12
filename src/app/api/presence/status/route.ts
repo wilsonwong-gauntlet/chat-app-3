@@ -29,6 +29,7 @@ export async function POST(req: Request) {
       },
       select: {
         id: true,
+        clerkId: true,
         name: true,
         email: true,
         imageUrl: true,
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
       `presence-workspace-${workspaceId}`,
       "presence:update",
       {
-        userId: user.id,
+        userId: user.clerkId,
         presence: user.presence,
         status: user.status,
         lastSeen: user.lastSeen,

@@ -34,6 +34,7 @@ export async function POST(req: Request) {
       where: { clerkId: userId },
       select: {
         id: true,
+        clerkId: true,
         name: true,
         email: true,
         imageUrl: true,
@@ -58,9 +59,10 @@ export async function POST(req: Request) {
       console.log("[PUSHER_AUTH] Authorizing presence channel");
       
       const presenceData = {
-        user_id: user.id,
+        user_id: user.clerkId,
         user_info: {
           id: user.id,
+          clerkId: user.clerkId,
           name: user.name,
           email: user.email,
           imageUrl: user.imageUrl,
@@ -93,7 +95,7 @@ export async function POST(req: Request) {
     const privateAuthResponse = pusherServer.authorizeChannel(
       socketId.toString(),
       channel.toString(),
-      { user_id: user.id }  // Required for all channel types
+      { user_id: user.clerkId }
     );
 
     return NextResponse.json(privateAuthResponse);

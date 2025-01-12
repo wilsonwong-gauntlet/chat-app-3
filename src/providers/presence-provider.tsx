@@ -14,7 +14,7 @@ import { pusherClient } from "@/lib/pusher";
 import { User, PresenceStatus } from "@/types";
 
 interface PresenceContextType {
-  onlineUsers: { [key: string]: User & { presence: PresenceStatus; status?: string } };
+  onlineUsers: { [clerkId: string]: User & { presence: PresenceStatus; status?: string } };
   setUserPresence: (presence: PresenceStatus) => Promise<void>;
   setUserStatus: (status: string) => Promise<void>;
 }
