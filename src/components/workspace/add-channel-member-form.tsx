@@ -20,6 +20,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useWorkspace } from "@/providers/workspace-provider";
+import { useModal } from "@/hooks/use-modal-store";
+import { Channel } from "@/types";
 
 interface AddChannelMemberFormProps {
   channelId: string;
@@ -29,8 +31,15 @@ export function AddChannelMemberForm({ channelId }: AddChannelMemberFormProps) {
   const [open, setOpen] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const { workspace, refresh } = useWorkspace();
+  const { data } = useModal();
+  const channel = (data as { channel: Channel })?.channel;
 
-  const workspaceMembers = workspace?.members || [];
+  // Filter out members who are already in the channel
+  const availableMembers = workspace?.members?.filter(member => 
+    !channel?.members?.some(channelMember => 
+      channelMember.userId === member.user.id
+    )
+  ) || [];
 
   const onSelect = async (userId: string) => {
     try {
@@ -79,7 +88,7 @@ export function AddChannelMemberForm({ channelId }: AddChannelMemberFormProps) {
           <CommandInput placeholder="Search members..." />
           <CommandEmpty>No members found.</CommandEmpty>
           <CommandGroup className="max-h-[300px] overflow-auto p-2">
-            {workspaceMembers.map((member) => (
+            {availableMembers.map((member) => (
               <CommandItem
                 key={member.id}
                 value={member.userId}

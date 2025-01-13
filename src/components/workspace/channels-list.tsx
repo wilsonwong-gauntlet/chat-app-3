@@ -42,7 +42,7 @@ export function ChannelsList({ channels }: ChannelsListProps) {
 
   const handleCreateChannel = () => {
     if (!workspace) return;
-    onOpen("createChannel");
+    onOpen("createChannel", { workspaceId: workspace.id });
   };
 
   return (

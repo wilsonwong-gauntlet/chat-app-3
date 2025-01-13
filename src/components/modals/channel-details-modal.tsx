@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Hash, Lock, X } from "lucide-react";
+import { Hash, Lock } from "lucide-react";
 import { format } from "date-fns";
 
 import {
@@ -19,12 +19,27 @@ import { Channel, ChannelType } from "@/types";
 import { AddChannelMemberForm } from "@/components/workspace/add-channel-member-form";
 import { ChannelMemberOptions } from "@/components/workspace/channel-member-options";
 
+interface ChannelDetailsData {
+  channel: Channel & {
+    members: {
+      id: string;
+      userId: string;
+      user: {
+        id: string;
+        name: string;
+        email: string;
+        imageUrl: string | null;
+      };
+    }[];
+  };
+}
+
 export function ChannelDetailsModal() {
   const { isOpen, onClose, type, data } = useModal();
   const [activeTab, setActiveTab] = React.useState("about");
 
   const isModalOpen = isOpen && type === "channelDetails";
-  const { channel } = data;
+  const { channel } = data as ChannelDetailsData;
 
   if (!channel) {
     return null;
@@ -34,24 +49,15 @@ export function ChannelDetailsModal() {
     <Dialog open={isModalOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl h-[80vh] flex flex-col p-0">
         <DialogHeader className="p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-x-2">
-              {channel.type === ChannelType.PRIVATE ? (
-                <Lock className="h-4 w-4" />
-              ) : (
-                <Hash className="h-4 w-4" />
-              )}
-              <DialogTitle className="text-2xl font-bold">
-                {channel.name}
-              </DialogTitle>
-            </div>
-            <Button
-              onClick={onClose}
-              variant="ghost"
-              size="icon"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+          <div className="flex items-center gap-x-2">
+            {channel.type === ChannelType.PRIVATE ? (
+              <Lock className="h-4 w-4" />
+            ) : (
+              <Hash className="h-4 w-4" />
+            )}
+            <DialogTitle className="text-2xl font-bold">
+              {channel.name}
+            </DialogTitle>
           </div>
         </DialogHeader>
         <Tabs
