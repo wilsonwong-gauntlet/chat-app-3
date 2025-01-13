@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/current-user";
+import { WorkspaceProvider } from "@/providers/workspace-provider";
+import { ModalProvider } from "@/providers/modal-provider";
 
 export default async function MainLayout({
   children,
@@ -16,7 +18,10 @@ export default async function MainLayout({
 
   return (
     <div className="h-full">
-      {children}
+      <WorkspaceProvider>
+        <ModalProvider />
+        {children}
+      </WorkspaceProvider>
     </div>
   );
 } 

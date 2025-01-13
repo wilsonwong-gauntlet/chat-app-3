@@ -15,9 +15,11 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useModal } from "@/hooks/use-modal-store";
-import { Channel, ChannelType } from "@/types";
+import { Channel, ChannelType, User } from "@/types";
 import { AddChannelMemberForm } from "@/components/workspace/add-channel-member-form";
 import { ChannelMemberOptions } from "@/components/workspace/channel-member-options";
+import { useWorkspace } from "@/providers/workspace-provider";
+import { toast } from "sonner";
 
 interface ChannelDetailsData {
   channel: Channel & {
@@ -29,6 +31,7 @@ interface ChannelDetailsData {
         name: string;
         email: string;
         imageUrl: string | null;
+        clerkId: string;
       };
     }[];
   };
@@ -36,45 +39,84 @@ interface ChannelDetailsData {
 
 export function ChannelDetailsModal() {
   const { isOpen, onClose, type, data } = useModal();
-  const [activeTab, setActiveTab] = React.useState("about");
+  const { workspace, refresh } = useWorkspace();
+  const [isLoading, setIsLoading] = React.useState(false);
 
   const isModalOpen = isOpen && type === "channelDetails";
-  const { channel } = data as ChannelDetailsData;
+  const channel = data?.channel;
 
-  if (!channel) {
+  React.useEffect(() => {
+    if (!isModalOpen) {
+      setIsLoading(false);
+    }
+  }, [isModalOpen]);
+
+  if (!channel || !workspace) {
     return null;
   }
 
+  // Transform workspace members to match the expected type
+  const formattedMembers = workspace.members.map(member => ({
+    user: {
+      id: member.user.id,
+      name: member.user.name,
+      email: member.user.email,
+      imageUrl: member.user.imageUrl || null,
+      clerkId: member.user.clerkId,
+    }
+  }));
+
+  const onAddMember = async (userId: string) => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/channels/${channel.id}/members`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to add member");
+      }
+
+      await refresh();
+      toast.success("Member added successfully");
+    } catch (error) {
+      console.error(error);
+      toast.error(error instanceof Error ? error.message : "Something went wrong");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleClose = () => {
+    if (!isLoading) {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isModalOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl h-[80vh] flex flex-col p-0">
-        <DialogHeader className="p-6">
-          <div className="flex items-center gap-x-2">
+    <Dialog open={isModalOpen} onOpenChange={handleClose}>
+      <DialogContent className="bg-white dark:bg-zinc-900">
+        <DialogHeader className="pt-2">
+          <DialogTitle className="text-2xl font-bold flex items-center gap-x-2">
             {channel.type === ChannelType.PRIVATE ? (
-              <Lock className="h-4 w-4" />
+              <Lock className="h-5 w-5" />
             ) : (
-              <Hash className="h-4 w-4" />
+              <Hash className="h-5 w-5" />
             )}
-            <DialogTitle className="text-2xl font-bold">
-              {channel.name}
-            </DialogTitle>
-          </div>
+            {channel.name}
+          </DialogTitle>
         </DialogHeader>
-        <Tabs
-          defaultValue="about"
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="flex-1"
-        >
-          <div className="px-6">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="about">About</TabsTrigger>
-              <TabsTrigger value="members">
-                Members ({channel.members.length})
-              </TabsTrigger>
-              <TabsTrigger value="settings">Settings</TabsTrigger>
-            </TabsList>
-          </div>
+        <Tabs defaultValue="about">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="about">About</TabsTrigger>
+            <TabsTrigger value="members">Members</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          </TabsList>
           <Separator />
           <ScrollArea className="flex-1 p-6">
             <TabsContent value="about" className="mt-0">
@@ -96,7 +138,12 @@ export function ChannelDetailsModal() {
             </TabsContent>
             <TabsContent value="members" className="mt-0">
               <div className="space-y-4">
-                <AddChannelMemberForm channelId={channel.id} />
+                <AddChannelMemberForm 
+                  channelId={channel.id}
+                  members={formattedMembers}
+                  channelMembers={channel.members}
+                  onAddMember={onAddMember}
+                />
                 <div className="space-y-4">
                   {channel.members.map((member) => (
                     <div
@@ -152,8 +199,9 @@ export function ChannelDetailsModal() {
                   <div>
                     <Button
                       variant="destructive"
-                      onClick={() => onClose()}
+                      onClick={handleClose}
                       className="w-full"
+                      disabled={isLoading}
                     >
                       Leave Channel
                     </Button>

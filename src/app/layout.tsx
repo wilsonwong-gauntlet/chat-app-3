@@ -5,6 +5,7 @@ import { ClerkProvider, SignedIn } from "@clerk/nextjs";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { ModalProvider } from "@/providers/modal-provider";
 import { UserButtonWrapper } from "@/components/user-button-wrapper";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -37,11 +38,11 @@ export default function RootLayout({
             enableSystem={false}
             storageKey="slack-theme"
           >
+            <Toaster />
             <SignedIn>
               <UserButtonWrapper />
-              <ModalProvider />
+              {children}
             </SignedIn>
-            {children}
           </ThemeProvider>
         </body>
       </html>
