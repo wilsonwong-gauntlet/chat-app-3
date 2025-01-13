@@ -119,6 +119,7 @@ export interface SearchQuery {
   workspaceId: string;
   channelId?: string;
   limit?: number;
+  receiverId: string;
 }
 
 export interface SearchResult {

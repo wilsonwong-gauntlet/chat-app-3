@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { db } from "@/lib/db";
 import { pusherServer } from "@/lib/pusher";
-import { sendMessageToRAG } from "@/lib/rag";
+import { sendMessageToRAG, generateAIResponse } from "@/lib/rag";
 
 const messageSchema = z.object({
   content: z.string(),
@@ -145,6 +145,7 @@ export async function POST(
       }
     }
 
+    // Create the user's message
     const message = await db.message.create({
       data: {
         content,
@@ -179,6 +180,59 @@ export async function POST(
         // Log error but don't fail the request
         console.error("RAG service error:", error);
       });
+
+      // For direct messages, generate an AI response
+      if (channel.type === "DIRECT") {
+        // Get the other user in the DM
+        const otherMember = channel.members.find(m => m.userId !== member.userId);
+        
+        if (otherMember) {
+          const aiResponse = await generateAIResponse(
+            channel.id,
+            channel.workspace.id,
+            member.userId,
+            otherMember.userId,
+            content
+          );
+
+          if (aiResponse) {
+            // Create the AI response message
+            const aiMessage = await db.message.create({
+              data: {
+                content: aiResponse.content,
+                channelId: channel.id,
+                userId: otherMember.userId,
+              },
+              include: {
+                user: true,
+                channel: true,
+                _count: {
+                  select: {
+                    replies: true
+                  }
+                }
+              }
+            });
+
+            // Send AI message to RAG service
+            await sendMessageToRAG({
+              id: aiMessage.id,
+              content: aiMessage.content,
+              channelId: aiMessage.channelId,
+              workspaceId: channel.workspace.id,
+              userId: aiMessage.userId,
+              userName: aiMessage.user.name,
+              channelName: aiMessage.channel.name,
+              createdAt: aiMessage.createdAt,
+            }).catch(error => {
+              console.error("RAG service error for AI message:", error);
+            });
+
+            // Trigger Pusher event for AI response
+            await pusherServer.trigger(channel.id, "new-message", aiMessage);
+          }
+        }
+      }
     }
 
     // If it's a thread reply, update the parent message and trigger in thread channel
