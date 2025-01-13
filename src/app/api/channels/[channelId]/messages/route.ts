@@ -4,13 +4,13 @@ import { z } from "zod";
 
 import { db } from "@/lib/db";
 import { pusherServer } from "@/lib/pusher";
+import { sendMessageToRAG } from "@/lib/rag";
 
 const messageSchema = z.object({
   content: z.string(),
   parentId: z.string().optional(),
   fileUrl: z.string().url().nullish()
 }).refine((data) => {
-  // Either content or fileUrl must be present
   return data.content.length > 0 || (data.fileUrl !== null && data.fileUrl !== undefined);
 }, {
   message: "Either message content or file attachment is required"
@@ -89,10 +89,7 @@ export async function POST(
     }
 
     const body = await req.json();
-    console.log("[MESSAGE_POST] Request body:", body);
-
     const { content, parentId, fileUrl } = messageSchema.parse(body);
-    console.log("[MESSAGE_POST] Parsed data:", { content, parentId, fileUrl });
 
     const channel = await db.channel.findUnique({
       where: {
@@ -117,7 +114,8 @@ export async function POST(
           include: {
             user: true
           }
-        }
+        },
+        workspace: true
       }
     });
 
@@ -166,6 +164,23 @@ export async function POST(
       }
     });
 
+    // Send to RAG service (only for main messages, not replies)
+    if (!parentId) {
+      await sendMessageToRAG({
+        id: message.id,
+        content: message.content,
+        channelId: message.channelId,
+        workspaceId: channel.workspace.id,
+        userId: message.userId,
+        userName: message.user.name,
+        channelName: message.channel.name,
+        createdAt: message.createdAt,
+      }).catch(error => {
+        // Log error but don't fail the request
+        console.error("RAG service error:", error);
+      });
+    }
+
     // If it's a thread reply, update the parent message and trigger in thread channel
     if (parentId) {
       const updatedParent = await db.message.findUnique({
@@ -198,9 +213,9 @@ export async function POST(
 
     return NextResponse.json(message);
   } catch (error) {
-    console.error("[MESSAGES_POST] Error details:", error);
+    console.error("[MESSAGES_POST]", error);
     return new NextResponse(
-      error instanceof Error ? error.message : "Internal Error", 
+      error instanceof Error ? error.message : "Internal Error",
       { status: 500 }
     );
   }

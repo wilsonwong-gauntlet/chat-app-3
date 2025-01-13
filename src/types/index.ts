@@ -101,4 +101,30 @@ export enum PresenceStatus {
   OFFLINE = "OFFLINE",
   AWAY = "AWAY",
   DND = "DND"
+}
+
+export interface RAGMessageEvent {
+  id: string;
+  content: string;
+  channelId: string;
+  workspaceId: string;
+  userId: string;
+  userName: string;
+  channelName: string;
+  createdAt: Date;
+}
+
+export interface SearchQuery {
+  query: string;
+  workspaceId: string;
+  channelId?: string;
+  limit?: number;
+}
+
+export interface SearchResult {
+  content: string;
+  messageId: string;
+  userName: string;
+  channelName: string;
+  timestamp: string;
 } 
