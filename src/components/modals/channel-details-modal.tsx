@@ -15,11 +15,11 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useModal } from "@/hooks/use-modal-store";
-import { Channel, ChannelType, User } from "@/types";
+import { Channel, ChannelType } from "@/types";
 import { AddChannelMemberForm } from "@/components/workspace/add-channel-member-form";
 import { ChannelMemberOptions } from "@/components/workspace/channel-member-options";
 import { useWorkspace } from "@/providers/workspace-provider";
-import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 interface ChannelDetailsData {
   channel: Channel & {
@@ -31,7 +31,6 @@ interface ChannelDetailsData {
         name: string;
         email: string;
         imageUrl: string | null;
-        clerkId: string;
       };
     }[];
   };
@@ -39,84 +38,84 @@ interface ChannelDetailsData {
 
 export function ChannelDetailsModal() {
   const { isOpen, onClose, type, data } = useModal();
-  const { workspace, refresh } = useWorkspace();
+  const [activeTab, setActiveTab] = React.useState("about");
+  const { workspace, members } = useWorkspace();
+  const router = useRouter();
   const [isLoading, setIsLoading] = React.useState(false);
 
   const isModalOpen = isOpen && type === "channelDetails";
-  const channel = data?.channel;
+  const { channel } = data as ChannelDetailsData;
 
   React.useEffect(() => {
-    if (!isModalOpen) {
-      setIsLoading(false);
+    if (isModalOpen) {
+      console.log("ChannelDetailsModal - Workspace Members:", members);
+      console.log("ChannelDetailsModal - Channel Data:", channel);
     }
-  }, [isModalOpen]);
+  }, [isModalOpen, members, channel]);
 
   if (!channel || !workspace) {
+    console.log("ChannelDetailsModal - Missing Data:", { channel, workspace });
     return null;
   }
 
-  // Transform workspace members to match the expected type
-  const formattedMembers = workspace.members.map(member => ({
-    user: {
-      id: member.user.id,
-      name: member.user.name,
-      email: member.user.email,
-      imageUrl: member.user.imageUrl || null,
-      clerkId: member.user.clerkId,
-    }
-  }));
-
   const onAddMember = async (userId: string) => {
     try {
+      console.log("ChannelDetailsModal - Adding member:", userId);
       setIsLoading(true);
       const response = await fetch(`/api/channels/${channel.id}/members`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/json"
         },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ userId })
       });
 
+      const data = await response.json();
+      console.log("ChannelDetailsModal - API Response:", { ok: response.ok, data });
+
       if (!response.ok) {
-        const data = await response.json();
         throw new Error(data.error || "Failed to add member");
       }
 
-      await refresh();
-      toast.success("Member added successfully");
+      router.refresh();
     } catch (error) {
-      console.error(error);
-      toast.error(error instanceof Error ? error.message : "Something went wrong");
+      console.error("ChannelDetailsModal - Error adding member:", error);
+      throw error; // Re-throw to be handled by the form
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleClose = () => {
-    if (!isLoading) {
-      onClose();
-    }
-  };
-
   return (
-    <Dialog open={isModalOpen} onOpenChange={handleClose}>
-      <DialogContent className="bg-white dark:bg-zinc-900">
-        <DialogHeader className="pt-2">
-          <DialogTitle className="text-2xl font-bold flex items-center gap-x-2">
+    <Dialog open={isModalOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl h-[80vh] flex flex-col p-0">
+        <DialogHeader className="p-6">
+          <div className="flex items-center gap-x-2">
             {channel.type === ChannelType.PRIVATE ? (
-              <Lock className="h-5 w-5" />
+              <Lock className="h-4 w-4" />
             ) : (
-              <Hash className="h-5 w-5" />
+              <Hash className="h-4 w-4" />
             )}
-            {channel.name}
-          </DialogTitle>
+            <DialogTitle className="text-2xl font-bold">
+              {channel.name}
+            </DialogTitle>
+          </div>
         </DialogHeader>
-        <Tabs defaultValue="about">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="about">About</TabsTrigger>
-            <TabsTrigger value="members">Members</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-          </TabsList>
+        <Tabs
+          defaultValue="about"
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="flex-1"
+        >
+          <div className="px-6">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="about">About</TabsTrigger>
+              <TabsTrigger value="members">
+                Members ({channel.members.length})
+              </TabsTrigger>
+              <TabsTrigger value="settings">Settings</TabsTrigger>
+            </TabsList>
+          </div>
           <Separator />
           <ScrollArea className="flex-1 p-6">
             <TabsContent value="about" className="mt-0">
@@ -140,7 +139,7 @@ export function ChannelDetailsModal() {
               <div className="space-y-4">
                 <AddChannelMemberForm 
                   channelId={channel.id}
-                  members={formattedMembers}
+                  members={members || []}
                   channelMembers={channel.members}
                   onAddMember={onAddMember}
                 />
@@ -199,9 +198,8 @@ export function ChannelDetailsModal() {
                   <div>
                     <Button
                       variant="destructive"
-                      onClick={handleClose}
+                      onClick={() => onClose()}
                       className="w-full"
-                      disabled={isLoading}
                     >
                       Leave Channel
                     </Button>

@@ -21,6 +21,7 @@ export async function POST(
     }
 
     const body = await req.json();
+    console.log("[CHANNEL_MEMBERS_POST] Request body:", body);
     const { userId: targetUserId } = memberSchema.parse(body);
 
     // Get the database user
@@ -31,6 +32,11 @@ export async function POST(
     if (!dbUser) {
       return new NextResponse("User not found", { status: 404 });
     }
+
+    console.log("[CHANNEL_MEMBERS_POST] Current user:", {
+      clerkId: userId,
+      dbUserId: dbUser.id
+    });
 
     // Get the channel and check permissions
     const channel = await db.channel.findUnique({
@@ -55,6 +61,13 @@ export async function POST(
       return new NextResponse("Channel not found", { status: 404 });
     }
 
+    console.log("[CHANNEL_MEMBERS_POST] Channel:", {
+      id: channel.id,
+      name: channel.name,
+      type: channel.type,
+      workspaceId: channel.workspaceId
+    });
+
     // Only workspace admins can add members to private channels
     if (channel.type === "PRIVATE" && channel.workspace.members.length === 0) {
       return new NextResponse("Unauthorized", { status: 403 });
@@ -68,6 +81,8 @@ export async function POST(
       }
     });
 
+    console.log("[CHANNEL_MEMBERS_POST] Target workspace member:", workspaceMember);
+
     if (!workspaceMember) {
       return new NextResponse("User is not a member of the workspace", { status: 400 });
     }
@@ -79,6 +94,8 @@ export async function POST(
         channelId: params.channelId
       }
     });
+
+    console.log("[CHANNEL_MEMBERS_POST] Existing channel member:", existingMember);
 
     if (existingMember) {
       return new NextResponse("User is already a member of the channel", { status: 409 });
@@ -94,6 +111,8 @@ export async function POST(
         user: true
       }
     });
+
+    console.log("[CHANNEL_MEMBERS_POST] Created channel member:", member);
 
     // Notify channel members
     await pusherServer.trigger(

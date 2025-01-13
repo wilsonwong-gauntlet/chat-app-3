@@ -1,17 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Check, ChevronsUpDown, Plus } from "lucide-react";
-
-import { cn } from "@/lib/utils";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-} from "@/components/ui/command";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -19,8 +11,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Channel, ChannelMember, User } from "@/types";
-import { useModal } from "@/hooks/use-modal-store";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
 
 interface AddChannelMemberFormProps {
   channelId: string;
@@ -34,7 +26,14 @@ interface AddChannelMemberFormProps {
     };
   }[];
   channelMembers: {
+    id: string;
     userId: string;
+    user: {
+      id: string;
+      name: string;
+      email: string;
+      imageUrl: string | null;
+    };
   }[];
   onAddMember: (userId: string) => Promise<void>;
 }
@@ -50,22 +49,28 @@ export function AddChannelMemberForm({
   const [search, setSearch] = React.useState("");
 
   // Filter out members who are already in the channel
-  const availableMembers = members.filter(member => 
-    !channelMembers.some(channelMember => 
-      channelMember.userId === member.user.id
-    )
-  ).filter(member =>
-    member.user.name.toLowerCase().includes(search.toLowerCase()) ||
-    member.user.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const availableMembers = React.useMemo(() => {
+    const filtered = members.filter(member => 
+      !channelMembers.some(channelMember => 
+        channelMember.userId === member.user.id
+      )
+    );
 
-  const onSelect = async (userId: string) => {
+    return filtered.filter(member =>
+      member.user.name.toLowerCase().includes(search.toLowerCase()) ||
+      member.user.email.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [members, channelMembers, search]);
+
+  const onSelect = async (member: typeof members[0]) => {
     try {
       setIsLoading(true);
-      await onAddMember(userId);
+      await onAddMember(member.user.id);
+      toast.success("Member added to channel");
       setOpen(false);
     } catch (error) {
-      console.error(error);
+      console.error("Error adding member:", error);
+      toast.error("Failed to add member to channel");
     } finally {
       setIsLoading(false);
     }
@@ -87,38 +92,44 @@ export function AddChannelMemberForm({
         <DialogHeader>
           <DialogTitle>Add Channel Members</DialogTitle>
         </DialogHeader>
-        <Command className="rounded-lg border shadow-md">
-          <CommandInput 
-            placeholder="Search members..." 
+        <div className="space-y-4">
+          <Input
+            placeholder="Search members..."
             value={search}
-            onValueChange={setSearch}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full"
           />
-          <CommandEmpty>No members found.</CommandEmpty>
-          <CommandGroup className="max-h-[300px] overflow-auto p-2">
-            {availableMembers.map((member) => (
-              <CommandItem
-                key={member.user.id}
-                value={member.user.id}
-                onSelect={() => onSelect(member.user.id)}
-                className="flex items-center gap-x-2 px-2 py-1.5"
-              >
-                <img
-                  src={member.user.imageUrl || "/placeholder-avatar.png"}
-                  alt={member.user.name}
-                  className="h-8 w-8 rounded-full"
-                />
-                <div className="flex flex-col">
-                  <p className="text-sm font-medium">
-                    {member.user.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {member.user.email}
-                  </p>
-                </div>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        </Command>
+          <ScrollArea className="h-[300px] overflow-auto rounded-md border">
+            <div className="p-2 space-y-2">
+              {availableMembers.length === 0 ? (
+                <p className="text-sm text-muted-foreground p-2">No members found.</p>
+              ) : (
+                availableMembers.map((member) => (
+                  <button
+                    key={member.user.id}
+                    onClick={() => onSelect(member)}
+                    disabled={isLoading}
+                    className="flex items-center gap-x-2 w-full p-2 rounded-lg hover:bg-accent transition-colors"
+                  >
+                    <img
+                      src={member.user.imageUrl || "/placeholder-avatar.png"}
+                      alt={member.user.name}
+                      className="h-8 w-8 rounded-full"
+                    />
+                    <div className="flex flex-col items-start">
+                      <p className="text-sm font-medium">
+                        {member.user.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {member.user.email}
+                      </p>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
