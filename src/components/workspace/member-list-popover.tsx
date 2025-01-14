@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { User } from "@/types";
+import { User, Channel, ChannelMember, ChannelType } from "@/types";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/components/user-avatar";
 import { usePresence } from "@/providers/presence-provider";
@@ -25,9 +25,19 @@ interface MemberListPopoverProps {
     user: User;
   }[];
   trigger: React.ReactNode;
+  channels: (Channel & {
+    members: (ChannelMember & {
+      user: {
+        id: string;
+        name: string;
+        imageUrl: string | null;
+        clerkId: string;
+      };
+    })[];
+  })[];
 }
 
-export function MemberListPopover({ members, trigger }: MemberListPopoverProps) {
+export function MemberListPopover({ members, trigger, channels }: MemberListPopoverProps) {
   const router = useRouter();
   const params = useParams();
   const { user: currentUser } = useUser();
@@ -38,9 +48,19 @@ export function MemberListPopover({ members, trigger }: MemberListPopoverProps) 
   const [isLoading, setIsLoading] = useState(false);
   const [loadingUserId, setLoadingUserId] = useState<string | null>(null);
 
-  // Filter out current user and apply search
-  const filteredMembers = members
+  // Get all users that already have DM channels with current user
+  const existingDMUserIds = channels
+    .filter(channel => channel.type === ChannelType.DIRECT)
+    .flatMap(channel => channel.members)
     .filter(member => member.user.clerkId !== currentUser?.id)
+    .map(member => member.user.clerkId);
+
+  // Filter out current user, existing DM users, and apply search
+  const filteredMembers = members
+    .filter(member => 
+      member.user.clerkId !== currentUser?.id && 
+      !existingDMUserIds.includes(member.user.clerkId)
+    )
     .filter(member => 
       member.user.name.toLowerCase().includes(search.toLowerCase()) ||
       member.user.email.toLowerCase().includes(search.toLowerCase())
@@ -97,16 +117,17 @@ export function MemberListPopover({ members, trigger }: MemberListPopoverProps) 
         {trigger}
       </PopoverTrigger>
       <PopoverContent 
-        className="w-80 p-0" 
+        className="w-80 p-0 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 shadow-lg" 
         side="right" 
         align="start"
+        sideOffset={10}
       >
-        <div className="p-2">
+        <div className="p-2 border-b border-zinc-200 dark:border-zinc-700">
           <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-zinc-500 dark:text-zinc-400" />
             <Input
               placeholder="Search members..."
-              className="pl-8"
+              className="pl-8 bg-transparent"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -123,7 +144,7 @@ export function MemberListPopover({ members, trigger }: MemberListPopoverProps) 
                   key={member.user.id}
                   variant="ghost"
                   className={cn(
-                    "w-full flex items-center gap-x-2 px-2 py-1.5 h-auto",
+                    "w-full flex items-center gap-x-2 px-2 py-1.5 h-auto hover:bg-zinc-700/10 dark:hover:bg-zinc-700/50",
                     isLoading && "opacity-50 cursor-not-allowed"
                   )}
                   disabled={isLoading}
@@ -148,7 +169,7 @@ export function MemberListPopover({ members, trigger }: MemberListPopoverProps) 
                     <span className="text-sm font-semibold truncate w-full">
                       {member.user.name}
                     </span>
-                    <span className="text-xs text-muted-foreground truncate w-full">
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400 truncate w-full">
                       {member.user.email}
                     </span>
                   </div>
@@ -161,7 +182,7 @@ export function MemberListPopover({ members, trigger }: MemberListPopoverProps) 
               );
             })}
             {filteredMembers.length === 0 && (
-              <div className="text-sm text-muted-foreground text-center py-4">
+              <div className="text-sm text-zinc-500 dark:text-zinc-400 text-center py-4">
                 No members found
               </div>
             )}

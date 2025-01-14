@@ -61,11 +61,12 @@ export function DirectMessagesList({ channels, members }: DirectMessagesListProp
         </h2>
         <MemberListPopover
           members={members}
+          channels={channels}
           trigger={
             <Button
               size="icon"
               variant="ghost"
-              className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="h-4 w-4 text-zinc-500 dark:text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
               title="Start a conversation"
             >
               <Plus className="h-4 w-4" />
