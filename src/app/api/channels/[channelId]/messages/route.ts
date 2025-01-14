@@ -165,103 +165,82 @@ export async function POST(
       }
     });
 
+    // Trigger Pusher event for the user's message immediately
+    await pusherServer.trigger(channel.id, "new-message", message);
+
     // Send to RAG service (only for main messages, not replies)
     if (!parentId) {
-      await sendMessageToRAG({
-        id: message.id,
-        content: message.content,
-        channelId: message.channelId,
-        workspaceId: channel.workspace.id,
-        userId: message.userId,
-        userName: message.user.name,
-        channelName: message.channel.name,
-        createdAt: message.createdAt,
-      }).catch(error => {
-        // Log error but don't fail the request
-        console.error("RAG service error:", error);
-      });
+      // Process RAG and AI response asynchronously
+      Promise.all([
+        sendMessageToRAG({
+          id: message.id,
+          content: message.content,
+          channelId: message.channelId,
+          workspaceId: channel.workspace.id,
+          userId: message.userId,
+          userName: message.user.name,
+          channelName: message.channel.name,
+          createdAt: message.createdAt,
+        }).catch(error => {
+          console.error("RAG service error:", error);
+        }),
 
-      // For direct messages, generate an AI response
-      if (channel.type === "DIRECT") {
-        // Get the other user in the DM
-        const otherMember = channel.members.find(m => m.userId !== member.userId);
-        
-        if (otherMember) {
-          const aiResponse = await generateAIResponse(
-            channel.workspace.id,
-            member.userId,
-            otherMember.userId,
-            message.content
-          );
+        // For direct messages, generate AI response asynchronously
+        (async () => {
+          if (channel.type === "DIRECT") {
+            const otherMember = channel.members.find(m => m.userId !== member.userId);
+            
+            if (otherMember) {
+              try {
+                const aiResponse = await generateAIResponse(
+                  channel.workspace.id,
+                  member.userId,
+                  otherMember.userId,
+                  message.content
+                );
 
-          if (aiResponse) {
-            // Create the AI response message
-            const aiMessage = await db.message.create({
-              data: {
-                content: aiResponse.content,
-                channelId: channel.id,
-                userId: otherMember.userId,
-              },
-              include: {
-                user: true,
-                channel: true,
-                _count: {
-                  select: {
-                    replies: true
-                  }
+                if (aiResponse) {
+                  const aiMessage = await db.message.create({
+                    data: {
+                      content: aiResponse.content,
+                      channelId: channel.id,
+                      userId: otherMember.userId,
+                    },
+                    include: {
+                      user: true,
+                      channel: true,
+                      _count: {
+                        select: {
+                          replies: true
+                        }
+                      }
+                    }
+                  });
+
+                  // Send AI message to RAG
+                  await sendMessageToRAG({
+                    id: aiMessage.id,
+                    content: aiMessage.content,
+                    channelId: aiMessage.channelId,
+                    workspaceId: channel.workspace.id,
+                    userId: aiMessage.userId,
+                    userName: aiMessage.user.name,
+                    channelName: aiMessage.channel.name,
+                    createdAt: aiMessage.createdAt,
+                  }).catch(error => {
+                    console.error("RAG service error for AI message:", error);
+                  });
+
+                  // Trigger Pusher event for AI response
+                  await pusherServer.trigger(channel.id, "new-message", aiMessage);
                 }
+              } catch (error) {
+                console.error("AI response error:", error);
               }
-            });
-
-            // Send AI message to RAG service
-            await sendMessageToRAG({
-              id: aiMessage.id,
-              content: aiMessage.content,
-              channelId: aiMessage.channelId,
-              workspaceId: channel.workspace.id,
-              userId: aiMessage.userId,
-              userName: aiMessage.user.name,
-              channelName: aiMessage.channel.name,
-              createdAt: aiMessage.createdAt,
-            }).catch(error => {
-              console.error("RAG service error for AI message:", error);
-            });
-
-            // Trigger Pusher event for AI response
-            await pusherServer.trigger(channel.id, "new-message", aiMessage);
-          }
-        }
-      }
-    }
-
-    // If it's a thread reply, update the parent message and trigger in thread channel
-    if (parentId) {
-      const updatedParent = await db.message.findUnique({
-        where: { id: parentId },
-        include: {
-          user: true,
-          channel: true,
-          _count: {
-            select: {
-              replies: true
             }
           }
-        }
-      });
-
-      if (updatedParent) {
-        // Trigger update in main channel to update reply count
-        await pusherServer.trigger(channel.id, "message-update", updatedParent);
-        // Trigger new message in thread channel
-        await pusherServer.trigger(
-          `thread-${channel.id}-${parentId}`,
-          "new-message",
-          message
-        );
-      }
-    } else {
-      // If it's a main channel message, only trigger in the main channel
-      await pusherServer.trigger(channel.id, "new-message", message);
+        })()
+      ]).catch(console.error); // Handle any errors in the background processing
     }
 
     return NextResponse.json(message);

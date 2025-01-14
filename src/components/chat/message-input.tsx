@@ -47,6 +47,12 @@ interface FormatButton {
   action: () => void;
 }
 
+interface AIResponse {
+  content: string;
+  type: 'completion' | 'suggestion' | 'analysis';
+  messageId: string;
+}
+
 export function MessageInput({
   channelId,
   parentId
@@ -212,9 +218,7 @@ export function MessageInput({
       // Clean up the HTML content
       const content = editor.getHTML()
         .trim()
-        // Remove wrapping p tags if it's just a single paragraph
         .replace(/^<p>(.*)<\/p>$/, '$1')
-        // Remove empty paragraphs
         .replace(/<p><\/p>/g, '');
 
       const response = await fetch(`/api/channels/${channelId}/messages`, {
@@ -233,6 +237,21 @@ export function MessageInput({
         const error = await response.text();
         throw new Error(error);
       }
+
+      const { messageId } = await response.json();
+
+      // Trigger AI processing asynchronously
+      fetch(`/api/ai/process`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          messageId,
+          channelId,
+          content
+        })
+      }).catch(console.error); // Handle silently as this is async
 
       editor.commands.clearContent();
       setFileUrl(null);
