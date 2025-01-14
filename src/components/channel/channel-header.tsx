@@ -27,6 +27,12 @@ export function ChannelHeader({ channel }: ChannelHeaderProps) {
   const { user } = useUser();
   const { onlineUsers } = usePresence();
 
+  // Get display name, handle empty/null cases
+  const getDisplayName = (member: any) => {
+    if (!member?.user) return "Anonymous User";
+    return member.user.name || member.user.email?.split('@')[0] || "Anonymous User";
+  };
+
   const handleChannelClick = () => {
     onOpen("channelDetails", { channel });
   };
@@ -49,7 +55,7 @@ export function ChannelHeader({ channel }: ChannelHeaderProps) {
             <UserAvatar
               userId={otherMember.user.id}
               imageUrl={otherMember.user.imageUrl}
-              name={otherMember.user.name}
+              name={getDisplayName(otherMember)}
               className="h-8 w-8"
             />
             <div className={cn(
@@ -61,7 +67,7 @@ export function ChannelHeader({ channel }: ChannelHeaderProps) {
             )} />
           </div>
           <span className="font-semibold text-md text-zinc-500 dark:text-zinc-400">
-            {otherMember.user.name}
+            {getDisplayName(otherMember)}
           </span>
         </div>
       </header>

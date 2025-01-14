@@ -180,12 +180,10 @@ export function MessageItem({
           ) : (
             <>
               <div className="text-sm text-zinc-600 dark:text-zinc-300">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  className="prose prose-sm dark:prose-invert prose-zinc max-w-none break-words [&_p]:leading-normal [&_p]:my-0 [&_pre]:my-0 [&_code]:px-1 [&_code]:py-0.5 [&_code]:bg-zinc-100 dark:bg-zinc-800 [&_code]:rounded-md [&_code]:text-sm [&_code]:font-mono"
-                >
-                  {message.content}
-                </ReactMarkdown>
+                <div 
+                  dangerouslySetInnerHTML={{ __html: message.content }}
+                  className="prose prose-sm dark:prose-invert prose-zinc max-w-none break-words [&_p]:leading-normal [&_p]:my-0 [&_pre]:my-0 [&_code]:px-1 [&_code]:py-0.5 [&_code]:bg-zinc-100 dark:[&_code]:bg-zinc-800 [&_code]:rounded-md [&_code]:text-sm [&_code]:font-mono"
+                />
               </div>
               {message.fileUrl && (
                 <>

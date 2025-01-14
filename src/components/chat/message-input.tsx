@@ -209,13 +209,21 @@ export function MessageInput({
     try {
       setIsLoading(true);
 
+      // Clean up the HTML content
+      const content = editor.getHTML()
+        .trim()
+        // Remove wrapping p tags if it's just a single paragraph
+        .replace(/^<p>(.*)<\/p>$/, '$1')
+        // Remove empty paragraphs
+        .replace(/<p><\/p>/g, '');
+
       const response = await fetch(`/api/channels/${channelId}/messages`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          content: editor.getHTML().trim() || "Shared a file",
+          content: content || "Shared a file",
           parentId,
           fileUrl: fileUrl || null
         })

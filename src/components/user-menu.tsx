@@ -29,6 +29,7 @@ import { usePresence } from "@/providers/presence-provider";
 import { PresenceStatus } from "@/types";
 import { UserAvatar } from "@/components/user-avatar";
 import { cn } from "@/lib/utils";
+import { getDisplayName } from "@/lib/get-display-name";
 
 const presenceOptions = [
   { label: "Active", value: PresenceStatus.ONLINE, icon: Sun },
@@ -48,11 +49,6 @@ export function UserMenu() {
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const currentPresence = onlineUsers[user?.id || ""]?.presence || PresenceStatus.ONLINE;
-
-  const getDisplayName = (user: any) => {
-    if (!user) return "Anonymous User";
-    return user.externalAccounts?.[0]?.username || user.emailAddresses?.[0]?.emailAddress?.split('@')[0] || "Anonymous User";
-  };
 
   const handlePresenceChange = async (presence: PresenceStatus) => {
     try {

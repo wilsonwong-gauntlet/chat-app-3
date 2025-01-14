@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/user-avatar";
 import { MemberOptions } from "./member-options";
 import { WorkspaceWithRelations } from "@/types";
+import { getDisplayName } from "@/lib/get-display-name";
 
 interface MemberListProps {
   workspace: WorkspaceWithRelations | null | undefined;
@@ -15,12 +16,6 @@ interface MemberListProps {
 
 export function MemberList({ workspace }: MemberListProps) {
   const { user } = useUser();
-
-  // Get display name, handle empty/null cases
-  const getDisplayName = (member: any) => {
-    if (!member?.user) return "Anonymous User";
-    return member.user.name || member.user.email?.split('@')[0] || "Anonymous User";
-  };
 
   if (!workspace) {
     return null;

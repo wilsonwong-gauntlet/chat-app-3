@@ -19,6 +19,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import { usePresence } from "@/providers/presence-provider";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
+import { getDisplayName } from "@/lib/get-display-name";
 
 interface MemberListPopoverProps {
   members: {
@@ -73,14 +74,8 @@ export function MemberListPopover({ members, trigger, channels }: MemberListPopo
       if (!aOnline && bOnline) return 1;
       
       // Then alphabetically
-      return a.user.name.localeCompare(b.user.name);
+      return getDisplayName(a).localeCompare(getDisplayName(b));
     });
-
-  // Get display name, handle empty/null cases
-  const getDisplayName = (member: any) => {
-    if (!member?.user) return "Anonymous User";
-    return member.user.name || member.user.email?.split('@')[0] || "Anonymous User";
-  };
 
   const startDM = async (member: { user: User }) => {
     try {
