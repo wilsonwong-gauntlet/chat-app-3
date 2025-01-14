@@ -1,4 +1,4 @@
-import type { RAGMessageEvent, SearchQuery, SearchResult } from "../types";
+import type { RAGMessageEvent, SearchQuery, SearchResult, AIResponse, GenerateRequest } from "../types";
 
 export async function searchMessages(query: SearchQuery): Promise<SearchResult[]> {
   const response = await fetch(`${process.env.RAG_SERVICE_URL}/search`, {
@@ -41,26 +41,40 @@ export async function sendMessageToRAG(message: RAGMessageEvent) {
   }
 }
 
-// Helper function to generate AI response
 export async function generateAIResponse(
-  channelId: string,
   workspaceId: string,
   senderId: string,
   receiverId: string,
   content: string,
 ): Promise<SearchResult | null> {
   try {
-    const response = await searchMessages({
+    const request: GenerateRequest = {
       query: content,
       workspaceId,
-      channelId,
       receiverId,
       limit: 5
+    };
+
+    const response = await fetch(`${process.env.RAG_SERVICE_URL}/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
     });
 
-    return response[0]; // Return the first (most relevant) AI response
+    if (!response.ok) {
+      throw new Error(`AI response error: ${response.statusText}`);
+    }
+
+    const data: AIResponse = await response.json();
+    
+    return {
+      content: data.response,
+      messageId: 'ai-' + Date.now(),
+    };
   } catch (error) {
     console.error("Error generating AI response:", error);
     return null;
   }
-} 
+}

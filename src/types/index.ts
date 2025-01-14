@@ -117,15 +117,24 @@ export interface RAGMessageEvent {
 export interface SearchQuery {
   query: string;
   workspaceId: string;
-  channelId?: string;
-  limit?: number;
   receiverId: string;
+  limit: number;
+}
+
+export interface GenerateRequest {
+  query: string;
+  workspaceId: string;
+  receiverId: string;
+  limit: number;
 }
 
 export interface SearchResult {
   content: string;
   messageId: string;
-  userName: string;
-  channelName: string;
-  timestamp: string;
-} 
+}
+
+export interface AIResponse {
+  response: string;
+  confidence: number;
+  sourceMessages: SearchResult[];
+}
