@@ -32,16 +32,33 @@ export async function POST(
       return new NextResponse("User not found", { status: 404 });
     }
 
-    // Verify channel membership
-    const member = await db.channelMember.findFirst({
+    // First check if the channel exists and get its type
+    const channel = await db.channel.findUnique({
       where: {
-        userId: user.id,
-        channelId: params.channelId,
+        id: params.channelId,
       },
+      select: {
+        id: true,
+        type: true,
+      }
     });
 
-    if (!member) {
-      return new NextResponse("Channel membership required", { status: 403 });
+    if (!channel) {
+      return new NextResponse("Channel not found", { status: 404 });
+    }
+
+    // For private channels, verify membership
+    if (channel.type !== "PUBLIC") {
+      const member = await db.channelMember.findFirst({
+        where: {
+          userId: user.id,
+          channelId: params.channelId,
+        },
+      });
+
+      if (!member) {
+        return new NextResponse("Channel membership required", { status: 403 });
+      }
     }
 
     // Create or delete reaction (toggle)
@@ -129,16 +146,33 @@ export async function GET(
       return new NextResponse("User not found", { status: 404 });
     }
 
-    // Verify channel membership
-    const member = await db.channelMember.findFirst({
+    // First check if the channel exists and get its type
+    const channel = await db.channel.findUnique({
       where: {
-        userId: user.id,
-        channelId: params.channelId,
+        id: params.channelId,
       },
+      select: {
+        id: true,
+        type: true,
+      }
     });
 
-    if (!member) {
-      return new NextResponse("Channel membership required", { status: 403 });
+    if (!channel) {
+      return new NextResponse("Channel not found", { status: 404 });
+    }
+
+    // For private channels, verify membership
+    if (channel.type !== "PUBLIC") {
+      const member = await db.channelMember.findFirst({
+        where: {
+          userId: user.id,
+          channelId: params.channelId,
+        },
+      });
+
+      if (!member) {
+        return new NextResponse("Channel membership required", { status: 403 });
+      }
     }
 
     const reactions = await getReactionsWithCounts(params.messageId, user.id);

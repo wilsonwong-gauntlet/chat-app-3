@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { useUser, SignOutButton } from "@clerk/nextjs";
 import {
   Check,
   ChevronDown,
@@ -197,11 +197,15 @@ export function UserMenu() {
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem 
-          className="text-rose-500 focus:text-rose-500" 
-          onClick={() => router.push("/sign-out")}
+          className="text-rose-500 focus:text-rose-500 cursor-pointer"
+          asChild
         >
-          <LogOut className="h-4 w-4 mr-2" />
-          Sign out
+          <SignOutButton>
+            <div className="flex items-center">
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign out
+            </div>
+          </SignOutButton>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
