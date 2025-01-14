@@ -16,6 +16,12 @@ interface MemberListProps {
 export function MemberList({ workspace }: MemberListProps) {
   const { user } = useUser();
 
+  // Get display name, handle empty/null cases
+  const getDisplayName = (member: any) => {
+    if (!member?.user) return "Anonymous User";
+    return member.user.name || member.user.email?.split('@')[0] || "Anonymous User";
+  };
+
   if (!workspace) {
     return null;
   }
@@ -36,11 +42,11 @@ export function MemberList({ workspace }: MemberListProps) {
                 <UserAvatar
                   userId={member.user.id}
                   imageUrl={member.user.imageUrl}
-                  name={member.user.name}
+                  name={getDisplayName(member)}
                 />
                 <div className="space-y-1">
                   <div className="text-sm font-medium leading-none">
-                    {member.user.name}
+                    {getDisplayName(member)}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {member.role.toLowerCase()}

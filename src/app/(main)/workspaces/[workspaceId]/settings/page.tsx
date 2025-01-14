@@ -64,6 +64,12 @@ async function getWorkspace(workspaceId: string, userId: string) {
   };
 }
 
+// Get display name, handle empty/null cases
+function getDisplayName(member: any) {
+  if (!member?.user) return "Anonymous User";
+  return member.user.name || member.user.email?.split('@')[0] || "Anonymous User";
+}
+
 export default async function WorkspaceSettingsPage({
   params
 }: {
@@ -151,11 +157,11 @@ export default async function WorkspaceSettingsPage({
                       <div className="flex items-center gap-x-2">
                         <img
                           src={member.user.imageUrl || "/placeholder-avatar.png"}
-                          alt={member.user.name}
+                          alt={getDisplayName(member)}
                           className="w-8 h-8 rounded-full"
                         />
                         <div>
-                          <p className="text-sm font-medium">{member.user.name}</p>
+                          <p className="text-sm font-medium">{getDisplayName(member)}</p>
                           <p className="text-xs text-muted-foreground">{member.user.email}</p>
                         </div>
                       </div>

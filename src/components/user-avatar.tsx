@@ -21,12 +21,20 @@ export function UserAvatar({
   const { onlineUsers } = usePresence();
   const presence = onlineUsers[userId]?.presence || "OFFLINE";
 
+  // Get initials from name, handle empty/null cases
+  const getInitials = (name: string) => {
+    if (!name || name.trim() === "") return "?";
+    const parts = name.trim().split(" ");
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
   return (
     <div className="relative">
       <Avatar className={cn("h-8 w-8", className)}>
         <AvatarImage src={imageUrl || undefined} />
         <AvatarFallback>
-          {name.slice(0, 2).toUpperCase()}
+          {getInitials(name)}
         </AvatarFallback>
       </Avatar>
       {showPresence && (

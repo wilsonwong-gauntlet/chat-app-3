@@ -76,6 +76,12 @@ export function MemberListPopover({ members, trigger, channels }: MemberListPopo
       return a.user.name.localeCompare(b.user.name);
     });
 
+  // Get display name, handle empty/null cases
+  const getDisplayName = (member: any) => {
+    if (!member?.user) return "Anonymous User";
+    return member.user.name || member.user.email?.split('@')[0] || "Anonymous User";
+  };
+
   const startDM = async (member: { user: User }) => {
     try {
       setIsLoading(true);
@@ -154,7 +160,7 @@ export function MemberListPopover({ members, trigger, channels }: MemberListPopo
                     <UserAvatar
                       userId={member.user.id}
                       imageUrl={member.user.imageUrl}
-                      name={member.user.name}
+                      name={getDisplayName(member)}
                       className="h-8 w-8"
                     />
                     <div className={cn(
@@ -167,7 +173,7 @@ export function MemberListPopover({ members, trigger, channels }: MemberListPopo
                   </div>
                   <div className="flex flex-col items-start flex-1 min-w-0">
                     <span className="text-sm font-semibold truncate w-full">
-                      {member.user.name}
+                      {getDisplayName(member)}
                     </span>
                     <span className="text-xs text-zinc-500 dark:text-zinc-400 truncate w-full">
                       {member.user.email}

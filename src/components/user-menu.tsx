@@ -49,6 +49,11 @@ export function UserMenu() {
 
   const currentPresence = onlineUsers[user?.id || ""]?.presence || PresenceStatus.ONLINE;
 
+  const getDisplayName = (user: any) => {
+    if (!user) return "Anonymous User";
+    return user.externalAccounts?.[0]?.username || user.emailAddresses?.[0]?.emailAddress?.split('@')[0] || "Anonymous User";
+  };
+
   const handlePresenceChange = async (presence: PresenceStatus) => {
     try {
       setIsLoading(true);
@@ -92,7 +97,7 @@ export function UserMenu() {
             <UserAvatar
               userId={user.id}
               imageUrl={user.imageUrl}
-              name={user.fullName || ""}
+              name={getDisplayName(user)}
             />
             <div 
               className={cn(
@@ -106,7 +111,7 @@ export function UserMenu() {
           </div>
           <div className="flex flex-col items-start flex-1 min-w-0">
             <span className="text-sm font-semibold truncate w-full">
-              {user.fullName}
+              {getDisplayName(user)}
             </span>
             <span className="text-xs text-muted-foreground truncate w-full">
               {status || "What's your status?"}
@@ -122,7 +127,7 @@ export function UserMenu() {
               <UserAvatar
                 userId={user.id}
                 imageUrl={user.imageUrl}
-                name={user.fullName || ""}
+                name={getDisplayName(user)}
                 className="h-10 w-10"
               />
               <div 
@@ -136,7 +141,7 @@ export function UserMenu() {
               />
             </div>
             <div className="flex flex-col">
-              <span className="font-semibold text-sm">{user.fullName}</span>
+              <span className="font-semibold text-sm">{getDisplayName(user)}</span>
               {isEditing ? (
                 <Input
                   ref={inputRef}
