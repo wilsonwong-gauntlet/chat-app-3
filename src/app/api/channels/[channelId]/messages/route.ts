@@ -188,11 +188,10 @@ export async function POST(
         
         if (otherMember) {
           const aiResponse = await generateAIResponse(
-            channel.id,
             channel.workspace.id,
             member.userId,
             otherMember.userId,
-            content
+            message.content
           );
 
           if (aiResponse) {
