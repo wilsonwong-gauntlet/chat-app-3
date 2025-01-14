@@ -74,7 +74,7 @@ export function MessageList({
         ]);
         const messagesArray = Array.from(uniqueMessages.values()) as MessageWithUser[];
         return messagesArray.sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         );
       });
     } catch (error) {
@@ -106,7 +106,7 @@ export function MessageList({
           
           const newMessages = [...current, message];
           return newMessages.sort(
-            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
           );
         });
         bottomRef?.current?.scrollIntoView();

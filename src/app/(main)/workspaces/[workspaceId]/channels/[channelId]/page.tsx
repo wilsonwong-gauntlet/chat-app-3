@@ -70,7 +70,7 @@ export default async function ChannelPage({
       messages: {
         take: 50,
         orderBy: {
-          createdAt: "desc"
+          createdAt: "asc"
         },
         include: {
           user: true,

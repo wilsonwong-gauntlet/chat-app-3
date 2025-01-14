@@ -65,7 +65,7 @@ export async function GET(
         }
       },
       orderBy: {
-        createdAt: "desc"
+        createdAt: "asc"
       },
       take: 50 // Limit to last 50 messages
     });
