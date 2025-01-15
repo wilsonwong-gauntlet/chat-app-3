@@ -54,6 +54,7 @@ export function ChannelHeader({ channel }: ChannelHeaderProps) {
           <div className="relative">
             <UserAvatar
               userId={otherMember.user.id}
+              clerkId={otherMember.user.clerkId}
               imageUrl={otherMember.user.imageUrl}
               name={getDisplayName(otherMember)}
               className="h-8 w-8"
