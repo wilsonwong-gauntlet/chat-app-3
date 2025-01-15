@@ -102,6 +102,7 @@ model Message {
   channelId     String
   userId        String
   parentId      String?   // For thread replies
+  isAIResponse  Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

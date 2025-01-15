@@ -136,6 +136,11 @@ export function MessageItem({
             <span className="text-xs text-zinc-500 dark:text-zinc-400">
               {formatTimestamp(message.createdAt)}
             </span>
+            {message.isAIResponse && (
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300">
+                AI
+              </span>
+            )}
           </div>
           {message.updatedAt > message.createdAt && (
             <span className="text-[10px] text-zinc-400 dark:text-zinc-500">

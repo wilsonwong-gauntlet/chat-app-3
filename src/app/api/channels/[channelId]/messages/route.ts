@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { pusherServer } from "@/lib/pusher";
@@ -218,44 +219,56 @@ export async function POST(
                     message.content
                   );
 
-                  if (aiResponse) {
-                    const aiMessage = await db.message.create({
+                  if (aiResponse && aiResponse.content) {
+                    // Create AI message
+                    const completeMessage = await db.message.create({
                       data: {
                         content: aiResponse.content,
                         channelId: channel.id,
                         userId: otherMember.userId,
+                        isAIResponse: true
                       },
                       include: {
                         user: true,
                         channel: true,
                         _count: {
-                          select: {
-                            replies: true
-                          }
+                          select: { replies: true }
                         }
                       }
                     });
 
-                    // Send AI message to RAG
-                    await sendMessageToRAG({
-                      id: aiMessage.id,
-                      content: aiMessage.content,
-                      channelId: aiMessage.channelId,
-                      workspaceId: channel.workspace.id,
-                      userId: aiMessage.userId,
-                      userName: aiMessage.user.name,
-                      channelName: aiMessage.channel.name,
-                      createdAt: aiMessage.createdAt,
-                    }).catch(error => {
-                      console.error("RAG service error for AI message:", error);
-                    });
+                    if (completeMessage) {
+                      // Send AI message to RAG
+                      await sendMessageToRAG({
+                        id: completeMessage.id,
+                        content: completeMessage.content,
+                        channelId: completeMessage.channelId,
+                        workspaceId: channel.workspace.id,
+                        userId: completeMessage.userId,
+                        userName: completeMessage.user.name,
+                        channelName: completeMessage.channel.name,
+                        createdAt: completeMessage.createdAt,
+                      }).catch(error => {
+                        console.error("RAG service error for AI message:", error);
+                      });
 
-                    // Trigger Pusher event for AI response
-                    await pusherServer.trigger(channel.id, "new-message", aiMessage);
+                      // Trigger Pusher event for AI response
+                      if (pusherServer) {
+                        await pusherServer.trigger(channel.id, "new-message", completeMessage);
+                      }
+                    }
                   }
                 }
               } catch (error) {
                 console.error("AI response error:", error);
+                // Log more detailed error information
+                if (error instanceof Error) {
+                  console.error("Error details:", {
+                    message: error.message,
+                    stack: error.stack,
+                    name: error.name
+                  });
+                }
               }
             }
           }

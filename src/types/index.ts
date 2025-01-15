@@ -70,6 +70,7 @@ export interface Message {
   channelId: string;
   userId: string;
   parentId?: string | null;
+  isAIResponse?: boolean;
   createdAt: Date;
   updatedAt: Date;
   user: User;
