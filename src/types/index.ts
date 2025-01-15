@@ -152,3 +152,19 @@ export interface Document {
   user?: User;
   workspace?: Workspace;
 }
+
+export type SupportedFileType = 
+  | "text/plain"
+  | "text/markdown"
+  | "application/json"
+  | "application/pdf"
+  | "application/msword"
+  | "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+export interface DocumentProcessRequest {
+  documentId: string;        // UUID from our database
+  fileUrl: string;          // S3 URL of the uploaded file
+  workspaceId: string;      // UUID of the workspace for context
+  fileName: string;         // Original file name with extension
+  fileType: SupportedFileType; // MIME type of the document
+}

@@ -43,6 +43,27 @@ export async function DELETE(
       return new NextResponse("Document not found", { status: 404 });
     }
 
+    // Delete from RAG service
+    try {
+      const response = await fetch(`${process.env.RAG_SERVICE_URL}/delete-document`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          documentId: document.id,
+          workspaceId: document.workspaceId
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete document from RAG service: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error("[RAG_DELETE_ERROR]", error);
+      // Continue with deletion even if RAG service fails
+    }
+
     // Delete from S3
     try {
       const key = document.url.split("/").pop();

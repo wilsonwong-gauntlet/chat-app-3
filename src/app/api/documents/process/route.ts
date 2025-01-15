@@ -2,6 +2,8 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { processDocument } from "@/lib/rag";
+import type { DocumentProcessRequest } from "@/types";
 
 export async function POST(req: Request) {
   try {
@@ -45,6 +47,7 @@ export async function POST(req: Request) {
       return new NextResponse("User not found", { status: 404 });
     }
 
+    // Create document record
     const document = await db.document.create({
       data: {
         url: fileUrl,
@@ -62,6 +65,23 @@ export async function POST(req: Request) {
         }
       }
     });
+
+    // Process document with RAG service
+    try {
+      const processRequest: DocumentProcessRequest = {
+        documentId: document.id,
+        fileUrl,
+        workspaceId,
+        fileName,
+        fileType
+      };
+      
+      await processDocument(processRequest);
+    } catch (error) {
+      console.error("[RAG_PROCESS_ERROR]", error);
+      // Don't fail the request if RAG processing fails
+      // The document is still uploaded and can be processed later
+    }
 
     return NextResponse.json(document);
   } catch (error) {

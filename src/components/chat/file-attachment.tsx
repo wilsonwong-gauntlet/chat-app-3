@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { validateFile, getFileType } from "@/lib/s3";
 
 interface FileAttachmentProps {
-  onFileUpload: (fileUrl: string) => void;
+  onFileUpload: (fileUrl: string, file: File) => void;
   onClose: () => void;
   acceptedTypes?: string[];
 }
@@ -48,29 +48,13 @@ export function FileAttachment({
         fileType: file.type,
       });
 
-      console.log("Presigned URL data:", data);
-
       // Upload to S3
-      const uploadResponse = await fetch(data.presignedUrl, {
-        method: "PUT",
-        body: file,
-        headers: {
-          "Content-Type": file.type,
-        },
+      await axios.put(data.presignedUrl, file, {
+        headers: { "Content-Type": file.type },
       });
 
-      if (!uploadResponse.ok) {
-        const errorText = await uploadResponse.text();
-        console.error("S3 Upload Error:", {
-          status: uploadResponse.status,
-          statusText: uploadResponse.statusText,
-          error: errorText
-        });
-        throw new Error(`Upload failed: ${uploadResponse.statusText}`);
-      }
-
-      // If it's an image, show preview
-      if (getFileType(file.name) === "image") {
+      // If it's an image, create preview
+      if (file.type.startsWith("image/")) {
         const reader = new FileReader();
         reader.onloadend = () => {
           setPreview(reader.result as string);
@@ -78,14 +62,15 @@ export function FileAttachment({
         reader.readAsDataURL(file);
       }
 
-      onFileUpload(data.fileUrl);
+      onFileUpload(data.fileUrl, file);
+      onClose();
     } catch (error) {
       console.error("Upload error:", error);
-      setUploadError("Failed to upload file. Please try again.");
+      setUploadError("Failed to upload file");
     } finally {
       setIsUploading(false);
     }
-  }, [onFileUpload, acceptedTypes]);
+  }, [onFileUpload, onClose, acceptedTypes]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

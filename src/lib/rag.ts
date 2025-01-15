@@ -1,4 +1,4 @@
-import type { RAGMessageEvent, SearchQuery, SearchResult, AIResponse, GenerateRequest } from "../types";
+import type { RAGMessageEvent, SearchQuery, SearchResult, AIResponse, GenerateRequest, DocumentProcessRequest } from "../types";
 
 export async function searchMessages(query: SearchQuery): Promise<SearchResult[]> {
   const response = await fetch(`${process.env.RAG_SERVICE_URL}/search`, {
@@ -18,6 +18,27 @@ export async function searchMessages(query: SearchQuery): Promise<SearchResult[]
 
   const data = await response.json();
   return data.messages;
+}
+
+export async function processDocument(request: DocumentProcessRequest) {
+  try {
+    const response = await fetch(`${process.env.RAG_SERVICE_URL}/process-document`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Document processing error: ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error processing document:", error);
+    throw error;
+  }
 }
 
 export async function sendMessageToRAG(message: RAGMessageEvent) {
