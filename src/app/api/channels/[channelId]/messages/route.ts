@@ -192,47 +192,66 @@ export async function POST(
             
             if (otherMember) {
               try {
-                const aiResponse = await generateAIResponse(
-                  channel.workspace.id,
-                  member.userId,
-                  otherMember.userId,
-                  message.content
-                );
+                // Get recipient's current presence state
+                const recipientUser = await db.user.findUnique({
+                  where: { id: otherMember.userId },
+                  select: {
+                    presence: true,
+                    isActive: true,
+                    lastSeen: true
+                  }
+                });
 
-                if (aiResponse) {
-                  const aiMessage = await db.message.create({
-                    data: {
-                      content: aiResponse.content,
-                      channelId: channel.id,
-                      userId: otherMember.userId,
-                    },
-                    include: {
-                      user: true,
-                      channel: true,
-                      _count: {
-                        select: {
-                          replies: true
+                // Only generate AI response if user is not actively present
+                const shouldGenerateAI = 
+                  recipientUser?.presence === "OFFLINE" || 
+                  recipientUser?.presence === "AWAY" ||
+                  (recipientUser?.lastSeen && 
+                   Date.now() - recipientUser.lastSeen.getTime() > 5 * 60 * 1000); // 5 minutes
+
+                if (shouldGenerateAI) {
+                  const aiResponse = await generateAIResponse(
+                    channel.workspace.id,
+                    member.userId,
+                    otherMember.userId,
+                    message.content
+                  );
+
+                  if (aiResponse) {
+                    const aiMessage = await db.message.create({
+                      data: {
+                        content: aiResponse.content,
+                        channelId: channel.id,
+                        userId: otherMember.userId,
+                      },
+                      include: {
+                        user: true,
+                        channel: true,
+                        _count: {
+                          select: {
+                            replies: true
+                          }
                         }
                       }
-                    }
-                  });
+                    });
 
-                  // Send AI message to RAG
-                  await sendMessageToRAG({
-                    id: aiMessage.id,
-                    content: aiMessage.content,
-                    channelId: aiMessage.channelId,
-                    workspaceId: channel.workspace.id,
-                    userId: aiMessage.userId,
-                    userName: aiMessage.user.name,
-                    channelName: aiMessage.channel.name,
-                    createdAt: aiMessage.createdAt,
-                  }).catch(error => {
-                    console.error("RAG service error for AI message:", error);
-                  });
+                    // Send AI message to RAG
+                    await sendMessageToRAG({
+                      id: aiMessage.id,
+                      content: aiMessage.content,
+                      channelId: aiMessage.channelId,
+                      workspaceId: channel.workspace.id,
+                      userId: aiMessage.userId,
+                      userName: aiMessage.user.name,
+                      channelName: aiMessage.channel.name,
+                      createdAt: aiMessage.createdAt,
+                    }).catch(error => {
+                      console.error("RAG service error for AI message:", error);
+                    });
 
-                  // Trigger Pusher event for AI response
-                  await pusherServer.trigger(channel.id, "new-message", aiMessage);
+                    // Trigger Pusher event for AI response
+                    await pusherServer.trigger(channel.id, "new-message", aiMessage);
+                  }
                 }
               } catch (error) {
                 console.error("AI response error:", error);
