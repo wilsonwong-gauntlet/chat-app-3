@@ -5,6 +5,7 @@ import { PresenceIndicator } from "@/components/presence-indicator";
 
 interface UserAvatarProps {
   userId: string;
+  clerkId: string;
   imageUrl?: string | null;
   name: string;
   className?: string;
@@ -13,13 +14,14 @@ interface UserAvatarProps {
 
 export function UserAvatar({ 
   userId,
+  clerkId,
   imageUrl, 
   name,
   className,
   showPresence = true,
 }: UserAvatarProps) {
   const { onlineUsers } = usePresence();
-  const presence = onlineUsers[userId]?.presence || "OFFLINE";
+  const presence = onlineUsers[clerkId]?.presence || "OFFLINE";
 
   // Get initials from name, handle empty/null cases
   const getInitials = (name: string) => {

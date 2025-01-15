@@ -96,6 +96,7 @@ export function DirectMessagesList({ channels, members }: DirectMessagesListProp
               <div className="flex-shrink-0">
                 <UserAvatar
                   userId={otherUser.id}
+                  clerkId={otherUser.clerkId}
                   imageUrl={otherUser.imageUrl}
                   name={otherUser.name}
                   className="h-5 w-5"

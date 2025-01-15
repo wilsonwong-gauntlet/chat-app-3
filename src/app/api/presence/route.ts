@@ -47,7 +47,7 @@ export async function POST(req: Request) {
       `presence-workspace-${workspaceId}`,
       "presence:update",
       {
-        userId: user.clerkId,
+        clerkId: user.clerkId,
         presence: user.presence,
         status: user.status,
       }

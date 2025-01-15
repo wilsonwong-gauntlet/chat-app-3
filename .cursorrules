@@ -1,3 +1,5 @@
+If I ask you to debug something, you should make sure that it isnt an issue with clerkId and userId. Those have caused many issues in the past.
+
 
 how to do auth:
 import { auth } from "@clerk/nextjs/server";

@@ -112,13 +112,13 @@ export function PresenceProvider({ children }: PresenceProviderProps) {
     });
 
     // Handle presence updates
-    channel.bind("presence:update", ({ userId, presence, status }: any) => {
+    channel.bind("presence:update", ({ clerkId, presence, status }: any) => {
       setOnlineUsers((current) => ({
         ...current,
-        [userId]: {
-          ...current[userId],
-          presence: presence || current[userId]?.presence,
-          status: status ?? current[userId]?.status,
+        [clerkId]: {
+          ...current[clerkId],
+          presence: presence || current[clerkId]?.presence,
+          status: status ?? current[clerkId]?.status,
         },
       }));
     });

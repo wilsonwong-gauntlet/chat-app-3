@@ -194,7 +194,7 @@ export async function POST(
               try {
                 // Get recipient's current presence state
                 const recipientUser = await db.user.findUnique({
-                  where: { id: otherMember.userId },
+                  where: { clerkId: otherMember.user.clerkId },
                   select: {
                     presence: true,
                     isActive: true,
@@ -204,6 +204,7 @@ export async function POST(
 
                 // Only generate AI response if user is not actively present
                 const shouldGenerateAI = 
+                  !recipientUser?.isActive ||
                   recipientUser?.presence === "OFFLINE" || 
                   recipientUser?.presence === "AWAY" ||
                   (recipientUser?.lastSeen && 
