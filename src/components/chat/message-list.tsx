@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { Message, User, Channel } from "@prisma/client";
 import { useInView } from "react-intersection-observer";
 import { Loader2 } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
 
 import { pusherClient } from "@/lib/pusher";
 import { MessageItem } from "./message-item";
@@ -23,8 +24,8 @@ export function MessageList({
   channelId,
   initialMessages
 }: MessageListProps) {
+  const { user } = useUser();
   const [messages, setMessages] = useState<MessageWithUser[]>(() => {
-    // Initialize with deduped messages
     const uniqueMessages = new Map(
       initialMessages
         .filter(message => !message.parentId)
@@ -36,22 +37,77 @@ export function MessageList({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const processedEvents = useRef(new Set<string>());
+  const lastUserInteraction = useRef<number>(Date.now());
+  const isUserActive = useRef(true);
 
   const { ref: loadMoreRef, inView } = useInView({
     threshold: 0
   });
 
-  const scrollToBottom = () => {
-    bottomRef?.current?.scrollIntoView({ behavior: 'smooth' });
+  // Track user activity
+  useEffect(() => {
+    const handleActivity = () => {
+      lastUserInteraction.current = Date.now();
+      isUserActive.current = true;
+    };
+
+    const handleVisibilityChange = () => {
+      isUserActive.current = document.visibilityState === 'visible';
+    };
+
+    // Track user interactions
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+    window.addEventListener('scroll', handleActivity);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      window.removeEventListener('scroll', handleActivity);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  const isNearBottom = () => {
+    const container = containerRef.current;
+    if (!container) return true;
+    
+    const threshold = 100; // pixels from bottom
+    return container.scrollHeight - container.scrollTop - container.clientHeight <= threshold;
+  };
+
+  const shouldScrollForNewMessage = (message: MessageWithUser) => {
+    // Always scroll for your own messages
+    if (message.user.clerkId === user?.id) {
+      return true;
+    }
+
+    // If user is near bottom or active in the last 30 seconds
+    const isRecentlyActive = Date.now() - lastUserInteraction.current < 30000; // 30 seconds
+    return (isNearBottom() || (isUserActive.current && isRecentlyActive));
+  };
+
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    if (!shouldAutoScroll) return;
+    bottomRef?.current?.scrollIntoView({ behavior });
   };
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.target as HTMLDivElement;
-    const isNearBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 200;
-    setShowScrollBottom(!isNearBottom);
+    const nearBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 200;
+    setShowScrollBottom(!nearBottom);
+    setShouldAutoScroll(nearBottom);
   };
+
+  // Initial scroll on mount
+  useEffect(() => {
+    scrollToBottom('instant');
+  }, []);
 
   const loadMoreMessages = async () => {
     if (isLoadingMore || !hasMore) return;
@@ -92,7 +148,6 @@ export function MessageList({
 
   useEffect(() => {
     pusherClient.subscribe(channelId);
-    bottomRef?.current?.scrollIntoView();
 
     const messageHandler = (message: MessageWithUser) => {
       const eventKey = `${channelId}:${message.id}:new`;
@@ -105,11 +160,20 @@ export function MessageList({
           if (exists) return current;
           
           const newMessages = [...current, message];
-          return newMessages.sort(
+          const sorted = newMessages.sort(
             (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
           );
+
+          if (shouldScrollForNewMessage(message)) {
+            // Use a small timeout to ensure the message is rendered first
+            setTimeout(() => {
+              setShouldAutoScroll(true);
+              scrollToBottom('smooth');
+            }, 100);
+          }
+
+          return sorted;
         });
-        bottomRef?.current?.scrollIntoView();
       }
     };
 
@@ -154,6 +218,7 @@ export function MessageList({
     <div className="flex h-full relative">
       <div className={`flex-1 ${activeThread ? 'border-r border-zinc-200 dark:border-zinc-700' : ''}`}>
         <div 
+          ref={containerRef}
           className="h-full overflow-y-auto px-4"
           onScroll={handleScroll}
         >
@@ -180,7 +245,10 @@ export function MessageList({
         </div>
         {showScrollBottom && (
           <Button
-            onClick={scrollToBottom}
+            onClick={() => {
+              setShouldAutoScroll(true);
+              scrollToBottom('smooth');
+            }}
             className="absolute bottom-4 right-4 rounded-full shadow-lg"
             size="sm"
           >
