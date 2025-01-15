@@ -3,7 +3,7 @@
 import { Channel, ChannelMember } from "@/types";
 import { ChannelsList } from "./channels-list";
 import { DirectMessagesList } from "./direct-messages-list";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Book } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { useWorkspace } from "@/providers/workspace-provider";
 import { useModal } from "@/hooks/use-modal-store";
@@ -60,6 +60,7 @@ export function WorkspaceSidebar({
   const { workspace } = useWorkspace();
   const { onOpen } = useModal();
   const router = useRouter();
+  const params = useParams();
 
   if (!workspace) return null;
 
@@ -113,6 +114,28 @@ export function WorkspaceSidebar({
           </div>
           <div className="space-y-2">
             <DirectMessagesList channels={channels} members={members} />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider px-2">
+              Knowledge Base
+            </h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className={cn(
+                "w-full justify-start px-2",
+                params?.["knowledge-base"] && "bg-zinc-700/50 dark:bg-zinc-700",
+                !params?.["knowledge-base"] && "hover:bg-zinc-700/10 dark:hover:bg-zinc-700/50"
+              )}
+            >
+              <Link href={`/workspaces/${params.workspaceId}/knowledge-base`}>
+                <Book className="h-4 w-4 mr-2 text-zinc-400" />
+                <span className="truncate text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300">
+                  Documents
+                </span>
+              </Link>
+            </Button>
           </div>
         </div>
       </ScrollArea>

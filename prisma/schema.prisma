@@ -33,6 +33,7 @@ model User {
   messages      Message[]
   reactions     Reaction[]
   channels      ChannelMember[]
+  documents     Document[]
 }
 
 model Workspace {
@@ -44,6 +45,7 @@ model Workspace {
   // Relationships
   members       WorkspaceMember[]
   channels      Channel[]
+  documents     Document[]
 }
 
 model WorkspaceMember {
@@ -131,6 +133,24 @@ model Reaction {
 
   @@unique([messageId, userId, emoji])
   @@index([messageId])
+  @@index([userId])
+}
+
+model Document {
+  id            String    @id @default(uuid())
+  name          String
+  url           String
+  type          String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  workspaceId   String
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
   @@index([userId])
 }
 

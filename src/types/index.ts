@@ -139,3 +139,16 @@ export interface AIResponse {
   confidence: number;
   sourceMessages: SearchResult[];
 }
+
+export interface Document {
+  id: string;
+  name: string;
+  url: string;
+  type: string;
+  workspaceId: string;
+  userId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  user?: User;
+  workspace?: Workspace;
+}

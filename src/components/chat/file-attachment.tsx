@@ -11,9 +11,14 @@ import { validateFile, getFileType } from "@/lib/s3";
 interface FileAttachmentProps {
   onFileUpload: (fileUrl: string) => void;
   onClose: () => void;
+  acceptedTypes?: string[];
 }
 
-export function FileAttachment({ onFileUpload, onClose }: FileAttachmentProps) {
+export function FileAttachment({ 
+  onFileUpload, 
+  onClose,
+  acceptedTypes 
+}: FileAttachmentProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -25,6 +30,11 @@ export function FileAttachment({ onFileUpload, onClose }: FileAttachmentProps) {
     const error = validateFile(file);
     if (error) {
       setUploadError(error);
+      return;
+    }
+
+    if (acceptedTypes && !acceptedTypes.includes(file.type)) {
+      setUploadError("File type not supported");
       return;
     }
 
@@ -75,12 +85,16 @@ export function FileAttachment({ onFileUpload, onClose }: FileAttachmentProps) {
     } finally {
       setIsUploading(false);
     }
-  }, [onFileUpload]);
+  }, [onFileUpload, acceptedTypes]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     maxFiles: 1,
     multiple: false,
+    accept: acceptedTypes ? acceptedTypes.reduce((acc, type) => {
+      acc[type] = [];
+      return acc;
+    }, {} as Record<string, string[]>) : undefined
   });
 
   return (
@@ -118,6 +132,11 @@ export function FileAttachment({ onFileUpload, onClose }: FileAttachmentProps) {
           <p className="text-xs text-muted-foreground">
             Maximum file size: 5MB
           </p>
+          {acceptedTypes && (
+            <p className="text-xs text-muted-foreground">
+              Supported types: {acceptedTypes.map(type => type.split("/")[1]).join(", ")}
+            </p>
+          )}
         </div>
       </div>
 
