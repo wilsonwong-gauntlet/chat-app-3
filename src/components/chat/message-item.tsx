@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { MessageWithUser } from "@/types";
 import { SmilePlus, Reply, Edit2, Trash2, Check, X, MessageCircle } from "lucide-react";
@@ -29,6 +29,7 @@ import { MessageReactions } from "@/components/message-reactions";
 import { getFileType } from "@/lib/s3";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
+import { pusherClient } from "@/lib/pusher";
 
 interface MessageItemProps {
   message: MessageWithUser;
@@ -37,17 +38,38 @@ interface MessageItemProps {
 }
 
 export function MessageItem({
-  message,
-  onThreadClick,
-  isThread = false
+  message: initialMessage,
+  isThread = false,
+  onThreadClick
 }: MessageItemProps) {
-  const { user } = useUser();
+  const [message, setMessage] = useState(initialMessage);
+  const [showEmojis, setShowEmojis] = useState(false);
+  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
   const { resolvedTheme } = useTheme();
-  
+  const { user } = useUser();
+
+  useEffect(() => {
+    const channel = message.channelId;
+    
+    const updateHandler = (updatedMessage: MessageWithUser) => {
+      if (updatedMessage.id === message.id) {
+        setMessage(updatedMessage);
+      }
+    };
+
+    pusherClient.subscribe(channel);
+    pusherClient.bind("message-update", updateHandler);
+
+    return () => {
+      pusherClient.unsubscribe(channel);
+      pusherClient.unbind("message-update", updateHandler);
+    };
+  }, [message.channelId, message.id]);
+
   const formatTimestamp = (date: Date) => {
     return format(new Date(date), "p");
   };
@@ -116,9 +138,10 @@ export function MessageItem({
 
   const isOwner = message.user.clerkId === user?.id;
   const isEditing = editingId === message.id;
+  const replyCount = message._count?.replies ?? 0;
 
   return (
-    <div className="group relative flex items-start gap-4 px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors">
+    <div className="relative group flex items-start gap-x-3 py-2 px-4">
       <div className="flex-shrink-0">
         <Avatar className="h-8 w-8">
           <AvatarImage src={message.user.imageUrl || ""} />
@@ -220,7 +243,7 @@ export function MessageItem({
             </>
           )}
         </div>
-        {!isThread && !isEditing && (
+        {!isThread && (
           <div className="flex items-center gap-2 mt-2">
             <Button
               onClick={() => onThreadClick?.(message)}
@@ -229,7 +252,7 @@ export function MessageItem({
               className="text-xs text-zinc-500 hover:text-zinc-600 dark:text-zinc-400 dark:hover:text-zinc-300 flex items-center gap-1"
             >
               <MessageCircle className="h-3 w-3" />
-              {message._count?.replies || 0} {message._count?.replies === 1 ? 'reply' : 'replies'}
+              {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
             </Button>
           </div>
         )}

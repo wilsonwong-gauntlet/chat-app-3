@@ -95,20 +95,13 @@ export async function POST(
     const channel = await db.channel.findUnique({
       where: {
         id: params.channelId,
-        OR: [
-          {
-            type: "PUBLIC"
-          },
-          {
-            members: {
-              some: {
-                user: {
-                  clerkId: userId
-                }
-              }
+        members: {
+          some: {
+            user: {
+              clerkId: userId
             }
           }
-        ]
+        }
       },
       include: {
         members: {
@@ -124,36 +117,20 @@ export async function POST(
       return new NextResponse("Channel not found", { status: 404 });
     }
 
-    const member = channel.members.find(
-      (member) => member.user.clerkId === userId
-    );
+    const member = channel.members.find((member) => member.user.clerkId === userId);
 
     if (!member) {
       return new NextResponse("Member not found", { status: 404 });
     }
 
-    // If this is a thread reply, verify parent message exists
-    if (parentId) {
-      const parentMessage = await db.message.findUnique({
-        where: {
-          id: parentId,
-          channelId: params.channelId
-        }
-      });
-
-      if (!parentMessage) {
-        return new NextResponse("Parent message not found", { status: 404 });
-      }
-    }
-
-    // Create the user's message
+    // Create the message
     const message = await db.message.create({
       data: {
         content,
         fileUrl,
+        parentId,
         channelId: channel.id,
-        userId: member.userId,
-        parentId
+        userId: member.userId
       },
       include: {
         user: true,
@@ -169,65 +146,99 @@ export async function POST(
     // Trigger Pusher event for the user's message immediately
     await pusherServer.trigger(channel.id, "new-message", message);
 
-    // Send to RAG service (only for main messages, not replies)
-    if (!parentId) {
-      // Process RAG and AI response asynchronously
-      Promise.all([
-        sendMessageToRAG({
-          id: message.id,
-          content: message.content,
-          channelId: message.channelId,
-          workspaceId: channel.workspace.id,
-          userId: message.userId,
-          userName: message.user.name,
-          channelName: message.channel.name,
-          createdAt: message.createdAt,
-        }).catch(error => {
-          console.error("RAG service error:", error);
-        }),
+    // If this is a reply, update the parent message's reply count
+    if (parentId) {
+      const updatedParent = await db.message.findUnique({
+        where: { id: parentId },
+        include: {
+          user: true,
+          channel: true,
+          _count: {
+            select: { replies: true }
+          }
+        }
+      });
 
-        // For direct messages, generate AI response asynchronously
-        (async () => {
-          if (channel.type === "DIRECT") {
-            const otherMember = channel.members.find(m => m.userId !== member.userId);
-            
-            if (otherMember) {
-              try {
-                // Get recipient's current presence state
-                const recipientUser = await db.user.findUnique({
-                  where: { clerkId: otherMember.user.clerkId },
-                  select: {
-                    presence: true,
-                    isActive: true,
-                    lastSeen: true
-                  }
-                });
+      if (updatedParent) {
+        // Trigger an update event for the parent message
+        await pusherServer.trigger(channel.id, "message-update", updatedParent);
+      }
+    }
 
-                // Only generate AI response if user is not actively present
-                const shouldGenerateAI = 
-                  !recipientUser?.isActive ||
-                  recipientUser?.presence === "OFFLINE" || 
-                  recipientUser?.presence === "AWAY" ||
-                  (recipientUser?.lastSeen && 
-                   Date.now() - recipientUser.lastSeen.getTime() > 5 * 60 * 1000); // 5 minutes
+    // Process RAG and AI response asynchronously
+    Promise.all([
+      // Send to RAG service
+      sendMessageToRAG({
+        id: message.id,
+        content: message.content,
+        channelId: message.channelId,
+        workspaceId: channel.workspace.id,
+        userId: message.userId,
+        userName: message.user.name,
+        channelName: message.channel.name,
+        createdAt: message.createdAt,
+      }),
 
-                if (shouldGenerateAI) {
-                  const aiResponse = await generateAIResponse(
-                    channel.workspace.id,
-                    member.userId,
-                    otherMember.userId,
-                    message.content
-                  );
+      // For direct messages, generate AI response asynchronously
+      (async () => {
+        if (channel.type === "DIRECT") {
+          const otherMember = channel.members.find(m => m.userId !== member.userId);
+          
+          if (otherMember) {
+            try {
+              // Get recipient's current presence state
+              const recipientUser = await db.user.findUnique({
+                where: { clerkId: otherMember.user.clerkId },
+                select: {
+                  presence: true,
+                  isActive: true,
+                  lastSeen: true
+                }
+              });
 
-                  if (aiResponse && aiResponse.content) {
-                    // Create AI message
-                    const completeMessage = await db.message.create({
-                      data: {
-                        content: aiResponse.content,
-                        channelId: channel.id,
-                        userId: otherMember.userId,
-                        isAIResponse: true
-                      },
+              // Only generate AI response if user is not actively present
+              const shouldGenerateAI = 
+                !recipientUser?.isActive ||
+                recipientUser?.presence === "OFFLINE" || 
+                recipientUser?.presence === "AWAY" ||
+                (recipientUser?.lastSeen && 
+                 Date.now() - recipientUser.lastSeen.getTime() > 5 * 60 * 1000); // 5 minutes
+
+              if (shouldGenerateAI) {
+                const aiResponse = await generateAIResponse(
+                  channel.workspace.id,
+                  member.userId,
+                  otherMember.userId,
+                  message.content
+                );
+
+                if (aiResponse && aiResponse.content) {
+                  // Create AI message
+                  const aiMessage = await db.message.create({
+                    data: {
+                      content: aiResponse.content,
+                      channelId: channel.id,
+                      userId: otherMember.userId,
+                      parentId: message.parentId || message.id,
+                      isAIResponse: true
+                    },
+                    include: {
+                      user: true,
+                      channel: true,
+                      _count: {
+                        select: {
+                          replies: true
+                        }
+                      }
+                    }
+                  });
+
+                  await pusherServer.trigger(channel.id, "new-message", aiMessage);
+
+                  // If AI response is a reply, update parent message's reply count
+                  if (aiMessage.parentId) {
+                    const updatedParent = await db.message.findUnique({
+                      where: { id: aiMessage.parentId },
                       include: {
                         user: true,
                         channel: true,
@@ -237,44 +248,26 @@ export async function POST(
                       }
                     });
 
-                    if (completeMessage) {
-                      // Send AI message to RAG
-                      await sendMessageToRAG({
-                        id: completeMessage.id,
-                        content: completeMessage.content,
-                        channelId: completeMessage.channelId,
-                        workspaceId: channel.workspace.id,
-                        userId: completeMessage.userId,
-                        userName: completeMessage.user.name,
-                        channelName: completeMessage.channel.name,
-                        createdAt: completeMessage.createdAt,
-                      }).catch(error => {
-                        console.error("RAG service error for AI message:", error);
-                      });
-
-                      // Trigger Pusher event for AI response
-                      if (pusherServer) {
-                        await pusherServer.trigger(channel.id, "new-message", completeMessage);
-                      }
+                    if (updatedParent) {
+                      await pusherServer.trigger(channel.id, "message-update", updatedParent);
                     }
                   }
                 }
-              } catch (error) {
-                console.error("AI response error:", error);
-                // Log more detailed error information
-                if (error instanceof Error) {
-                  console.error("Error details:", {
-                    message: error.message,
-                    stack: error.stack,
-                    name: error.name
-                  });
-                }
+              }
+            } catch (error) {
+              console.error("AI response error:", error);
+              if (error instanceof Error) {
+                console.error("Error details:", {
+                  message: error.message,
+                  stack: error.stack,
+                  name: error.name
+                });
               }
             }
           }
-        })()
-      ]).catch(console.error); // Handle any errors in the background processing
-    }
+        }
+      })()
+    ]).catch(console.error);
 
     return NextResponse.json(message);
   } catch (error) {
@@ -283,5 +276,57 @@ export async function POST(
       error instanceof Error ? error.message : "Internal Error",
       { status: 500 }
     );
+  }
+}
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: { channelId: string; messageId: string } }
+) {
+  try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    // Delete the message
+    const message = await db.message.delete({
+      where: {
+        id: params.messageId,
+        channelId: params.channelId
+      },
+      include: {
+        user: true,
+        channel: true
+      }
+    });
+
+    // Trigger Pusher event for message deletion
+    await pusherServer.trigger(params.channelId, "message-delete", params.messageId);
+
+    // If this was a reply, update the parent message's reply count
+    if (message.parentId) {
+      const updatedParent = await db.message.findUnique({
+        where: { id: message.parentId },
+        include: {
+          user: true,
+          channel: true,
+          _count: {
+            select: { replies: true }
+          }
+        }
+      });
+
+      if (updatedParent) {
+        // Trigger an update event for the parent message
+        await pusherServer.trigger(params.channelId, "message-update", updatedParent);
+      }
+    }
+
+    return NextResponse.json(message);
+  } catch (error) {
+    console.log("[MESSAGE_DELETE]", error);
+    return new NextResponse("Internal Error", { status: 500 });
   }
 } 

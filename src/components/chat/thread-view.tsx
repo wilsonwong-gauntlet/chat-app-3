@@ -18,10 +18,11 @@ interface ThreadViewProps {
 }
 
 export function ThreadView({
-  thread,
+  thread: initialThread,
   channelId,
   onClose
 }: ThreadViewProps) {
+  const [thread, setThread] = useState(initialThread);
   const [replies, setReplies] = useState<MessageWithUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -53,6 +54,7 @@ export function ThreadView({
   useEffect(() => {
     const threadChannel = `thread-${channelId}-${thread.id}`;
     pusherClient.subscribe(threadChannel);
+    pusherClient.subscribe(channelId);
     bottomRef?.current?.scrollIntoView();
 
     const messageHandler = (message: MessageWithUser) => {
@@ -80,7 +82,12 @@ export function ThreadView({
       if (processedEvents.current.has(eventKey)) return;
       processedEvents.current.add(eventKey);
 
-      // Only handle updates for messages in this thread
+      // Update thread message if it's the one being updated
+      if (updatedMessage.id === thread.id) {
+        setThread(updatedMessage);
+      }
+
+      // Update reply if it belongs to this thread
       if (updatedMessage.parentId === thread.id) {
         setReplies((current) => 
           current.map((msg) => 
@@ -145,7 +152,7 @@ export function ThreadView({
               isThread
             />
             <div className="mt-1 ml-12 text-xs text-muted-foreground">
-              {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
+              {thread._count?.replies ?? 0} {thread._count?.replies === 1 ? 'reply' : 'replies'}
             </div>
           </div>
           <div className="space-y-4">
