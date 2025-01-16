@@ -219,7 +219,7 @@ export async function POST(
                       content: aiResponse.content,
                       channelId: channel.id,
                       userId: otherMember.userId,
-                      parentId: message.parentId || message.id,
+                      parentId: message.parentId,
                       isAIResponse: true
                     },
                     include: {

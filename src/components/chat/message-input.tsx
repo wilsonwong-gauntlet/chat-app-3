@@ -240,18 +240,8 @@ export function MessageInput({
 
       const { messageId } = await response.json();
 
-      // Trigger AI processing asynchronously
-      fetch(`/api/ai/process`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          messageId,
-          channelId,
-          content
-        })
-      }).catch(console.error); // Handle silently as this is async
+      // AI processing is handled automatically in the messages route
+      // No need for a separate API call
 
       editor.commands.clearContent();
       setFileUrl(null);

@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { generateKnowledgeBaseResponse } from "@/lib/rag";
@@ -46,6 +47,10 @@ export async function POST(req: Request) {
         .map(msg => msg.documentId!);
 
       if (documentIds.length) {
+        type DocumentSelect = Prisma.DocumentGetPayload<{
+          select: { id: true; url: true }
+        }>;
+
         const documents = await db.document.findMany({
           where: {
             id: {
@@ -61,7 +66,7 @@ export async function POST(req: Request) {
         // Add document URLs to source messages
         response.sourceMessages = response.sourceMessages.map(msg => ({
           ...msg,
-          documentUrl: documents.find(doc => doc.id === msg.documentId)?.url
+          documentUrl: documents.find((doc: DocumentSelect) => doc.id === msg.documentId)?.url
         }));
       }
     }
@@ -69,6 +74,10 @@ export async function POST(req: Request) {
     return NextResponse.json(response);
   } catch (error) {
     console.error("[AI_CHAT_ERROR]", error);
-    return new NextResponse("Internal Error", { status: 500 });
+    return NextResponse.json({
+      content: "I encountered an error processing your request. Please try again.",
+      messageId: 'error-' + Date.now(),
+      sourceMessages: []
+    }, { status: 500 });
   }
 } 

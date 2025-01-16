@@ -98,13 +98,27 @@ export async function generateAIResponse(
     });
 
     if (!response.ok) {
-      throw new Error(`AI response error: ${response.statusText}`);
+      return {
+        content: `AI response error: ${response.statusText}`,
+        messageId: 'ai-' + Date.now(),
+      };
     }
 
-    const data: AIResponse = await response.json();
+    const data = await response.json();
     
+    // Handle both possible response formats
+    const aiContent = data?.content || data?.response;
+    
+    if (typeof aiContent !== 'string') {
+      console.error("[RAG] Invalid AI response format:", data);
+      return {
+        content: "I received an unexpected response format. Please try again.",
+        messageId: 'ai-' + Date.now(),
+      };
+    }
+
     return {
-      content: data.content,
+      content: aiContent,
       messageId: 'ai-' + Date.now(),
     };
   } catch (error) {
@@ -116,7 +130,7 @@ export async function generateAIResponse(
 export async function generateKnowledgeBaseResponse(
   workspaceId: string,
   query: string,
-): Promise<AIResponse | null> {
+): Promise<AIResponse> {
   try {
     const url = `${process.env.RAG_SERVICE_URL}/knowledge-base/generate`;
     console.log("[RAG] Request details:", { 
@@ -147,7 +161,7 @@ export async function generateKnowledgeBaseResponse(
       }),
     });
 
-    console.log("[RAG] Response headers:", {
+    console.log("[RAG] Response details:", {
       status: response.status,
       statusText: response.statusText,
       headers: Object.fromEntries(response.headers.entries())
@@ -156,22 +170,29 @@ export async function generateKnowledgeBaseResponse(
     if (!response.ok) {
       console.error("[RAG] Response not OK:", {
         status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
+        statusText: response.statusText
       });
-      throw new Error(`AI response error: ${response.statusText}`);
+      return {
+        content: `I encountered an error (${response.status}) while processing your request. Please try again later.`,
+        messageId: 'ai-' + Date.now(),
+        sourceMessages: []
+      };
     }
 
     const rawData = await response.text();
-    console.log("[RAG] Raw response text:", rawData);
+    console.log("[RAG] Raw response:", rawData);
 
     let data;
     try {
       data = JSON.parse(rawData);
-      console.log("[RAG] Parsed response data:", data);
+      console.log("[RAG] Parsed data:", JSON.stringify(data, null, 2));
     } catch (parseError) {
-      console.error("[RAG] Failed to parse response as JSON:", parseError);
-      throw parseError;
+      console.error("[RAG] JSON parse error:", parseError);
+      return {
+        content: "I received an invalid JSON response. Please try again.",
+        messageId: 'ai-' + Date.now(),
+        sourceMessages: []
+      };
     }
 
     console.log("[RAG] Extracted fields:", {
@@ -181,9 +202,21 @@ export async function generateKnowledgeBaseResponse(
       hasSourceMessages: !!data.sourceMessages,
       sourceMessagesLength: data.sourceMessages?.length
     });
+
+    // Handle both possible response formats
+    const content = data?.content || data?.response;
     
+    if (typeof content !== 'string') {
+      console.error("[RAG] Invalid content format:", { content, data });
+      return {
+        content: "The response format was unexpected. Please try again.",
+        messageId: 'ai-' + Date.now(),
+        sourceMessages: []
+      };
+    }
+
     const result = {
-      content: data.response,
+      content,
       messageId: 'ai-' + Date.now(),
       sourceMessages: Array.isArray(data.sourceMessages) ? data.sourceMessages : []
     };
@@ -191,11 +224,15 @@ export async function generateKnowledgeBaseResponse(
     console.log("[RAG] Final result:", result);
     return result;
   } catch (error: unknown) {
-    console.error("[RAG] Error in generateKnowledgeBaseResponse:", {
+    console.error("[RAG] Error:", {
       error,
       message: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined
     });
-    return null;
+    return {
+      content: "I encountered an unexpected error. Please try again later.",
+      messageId: 'ai-' + Date.now(),
+      sourceMessages: []
+    };
   }
 }
