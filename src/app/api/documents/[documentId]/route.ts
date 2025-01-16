@@ -44,6 +44,7 @@ export async function DELETE(
     }
 
     // Delete from RAG service
+    /*
     try {
       const response = await fetch(`${process.env.RAG_SERVICE_URL}/delete-document`, {
         method: 'POST',
@@ -63,6 +64,7 @@ export async function DELETE(
       console.error("[RAG_DELETE_ERROR]", error);
       // Continue with deletion even if RAG service fails
     }
+    */
 
     // Delete from S3
     try {
