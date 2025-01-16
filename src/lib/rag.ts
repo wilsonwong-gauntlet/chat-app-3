@@ -22,21 +22,35 @@ export async function searchMessages(query: SearchQuery): Promise<SearchResult[]
 
 export async function processDocument(request: DocumentProcessRequest) {
   try {
+    console.log("[PROCESS_DOCUMENT_REQUEST]", {
+      url: `${process.env.RAG_SERVICE_URL}/process-document`,
+      request
+    });
+
     const response = await fetch(`${process.env.RAG_SERVICE_URL}/process-document`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.RAG_SERVICE_API_KEY}`
       },
       body: JSON.stringify(request),
     });
 
     if (!response.ok) {
-      throw new Error(`Document processing error: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error("[PROCESS_DOCUMENT_ERROR]", {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText
+      });
+      throw new Error(`Document processing error: ${errorText}`);
     }
 
-    return await response.json();
+    const result = await response.json();
+    console.log("[PROCESS_DOCUMENT_RESPONSE]", result);
+    return result;
   } catch (error) {
-    console.error("Error processing document:", error);
+    console.error("[PROCESS_DOCUMENT_ERROR]", error);
     throw error;
   }
 }

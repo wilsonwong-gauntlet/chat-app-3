@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { processDocument } from "@/lib/rag";
 import type { DocumentProcessRequest } from "@/types";
+import { DocumentStatus } from "@/types";
 
 export async function POST(req: Request) {
   try {
@@ -48,7 +49,7 @@ export async function POST(req: Request) {
     }
 
     // Create document record
-    const document = await db.document.create({
+    const initialDoc = await db.document.create({
       data: {
         url: fileUrl,
         name: fileName,
@@ -69,21 +70,44 @@ export async function POST(req: Request) {
     // Process document with RAG service
     try {
       const processRequest: DocumentProcessRequest = {
-        documentId: document.id,
+        documentId: initialDoc.id,
         fileUrl,
         workspaceId,
         fileName,
         fileType
       };
       
-      await processDocument(processRequest);
+      const result = await processDocument(processRequest);
+      
+      // Update document with vector IDs if processing was successful
+      if (result.vectorIds) {
+        const updatedDoc = await db.document.update({
+          where: { id: initialDoc.id },
+          data: {
+            status: DocumentStatus.COMPLETED,
+            vectorIds: result.vectorIds
+          }
+        });
+        return NextResponse.json(updatedDoc);
+      }
+
+      return NextResponse.json(initialDoc);
     } catch (error) {
       console.error("[RAG_PROCESS_ERROR]", error);
+      
+      // Update document status to FAILED
+      const failedDoc = await db.document.update({
+        where: { id: initialDoc.id },
+        data: {
+          status: DocumentStatus.FAILED,
+          error: error instanceof Error ? error.message : "Unknown error"
+        }
+      });
+
       // Don't fail the request if RAG processing fails
       // The document is still uploaded and can be processed later
+      return NextResponse.json(failedDoc);
     }
-
-    return NextResponse.json(document);
   } catch (error) {
     console.error("[DOCUMENT_PROCESS]", error);
     return new NextResponse("Internal Error", { status: 500 });

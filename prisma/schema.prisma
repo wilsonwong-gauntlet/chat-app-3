@@ -152,6 +152,7 @@ model Document {
   type          String
   status        DocumentStatus @default(PENDING)
   error         String?        // To store error message if processing fails
+  vectorIds     String[]      // Array of Pinecone vector IDs for this document
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 

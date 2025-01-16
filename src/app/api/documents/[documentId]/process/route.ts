@@ -47,7 +47,7 @@ export async function POST(
 
     // Process document with RAG service
     try {
-      await processDocument({
+      const result = await processDocument({
         documentId: document.id,
         fileUrl: document.url,
         workspaceId: document.workspaceId,
@@ -55,10 +55,13 @@ export async function POST(
         fileType: document.type as any // TODO: Fix type casting
       });
 
-      // Update status to COMPLETED
+      // Update status to COMPLETED and save vectorIds
       await db.document.update({
         where: { id: params.documentId },
-        data: { status: DocumentStatus.COMPLETED }
+        data: { 
+          status: DocumentStatus.COMPLETED,
+          vectorIds: result.vectorIds
+        }
       });
     } catch (error) {
       // Update status to FAILED
