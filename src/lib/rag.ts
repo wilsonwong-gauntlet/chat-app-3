@@ -31,7 +31,6 @@ export async function processDocument(request: DocumentProcessRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.RAG_SERVICE_API_KEY}`
       },
       body: JSON.stringify(request),
     });
@@ -127,11 +126,19 @@ export async function generateKnowledgeBaseResponse(
       RAG_SERVICE_URL: process.env.RAG_SERVICE_URL 
     });
 
+    if (!process.env.RAG_SERVICE_URL) {
+      console.error("[RAG] RAG_SERVICE_URL is not configured");
+      return {
+        content: "I apologize, but I'm not configured properly at the moment. Please contact support.",
+        messageId: 'ai-' + Date.now(),
+        sourceMessages: []
+      };
+    }
+
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.RAG_SERVICE_API_KEY}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         query,
@@ -178,7 +185,7 @@ export async function generateKnowledgeBaseResponse(
     const result = {
       content: data.response,
       messageId: 'ai-' + Date.now(),
-      sourceMessages: data.sourceMessages || []
+      sourceMessages: Array.isArray(data.sourceMessages) ? data.sourceMessages : []
     };
 
     console.log("[RAG] Final result:", result);
