@@ -140,11 +140,20 @@ export interface AIResponse {
   sourceMessages: SearchResult[];
 }
 
+export enum DocumentStatus {
+  PENDING = "PENDING",
+  PROCESSING = "PROCESSING",
+  COMPLETED = "COMPLETED",
+  FAILED = "FAILED"
+}
+
 export interface Document {
   id: string;
   name: string;
   url: string;
   type: string;
+  status: DocumentStatus;
+  error?: string | null;
   workspaceId: string;
   userId: string;
   createdAt: Date;

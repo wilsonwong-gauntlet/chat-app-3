@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { DocumentUpload } from "./document-upload";
 import { DocumentCard } from "./document-card";
 import { Document, User } from "@/types";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 interface KnowledgeBaseProps {
   documents: (Document & {
@@ -44,23 +45,25 @@ export function KnowledgeBase({ documents, workspaceId }: KnowledgeBaseProps) {
         </Button>
       </div>
       <ScrollArea className="flex-1 p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {documents.map((document) => (
-            <DocumentCard 
-              key={document.id}
-              document={document}
-              onDeleted={handleDocumentDeleted}
-            />
-          ))}
-          {documents.length === 0 && (
-            <div className="col-span-full flex flex-col items-center justify-center p-8 text-center">
-              <h3 className="text-lg font-semibold">No documents yet</h3>
-              <p className="text-sm text-muted-foreground">
-                Upload documents to create a knowledge base for your workspace.
-              </p>
-            </div>
-          )}
-        </div>
+        <TooltipProvider>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {documents.map((document) => (
+              <DocumentCard 
+                key={document.id}
+                document={document}
+                onDeleted={handleDocumentDeleted}
+              />
+            ))}
+            {documents.length === 0 && (
+              <div className="col-span-full flex flex-col items-center justify-center p-8 text-center">
+                <h3 className="text-lg font-semibold">No documents yet</h3>
+                <p className="text-sm text-muted-foreground">
+                  Upload documents to create a knowledge base for your workspace.
+                </p>
+              </div>
+            )}
+          </div>
+        </TooltipProvider>
       </ScrollArea>
       <DocumentUpload
         workspaceId={workspaceId}

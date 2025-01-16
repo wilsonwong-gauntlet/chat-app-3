@@ -136,19 +136,28 @@ model Reaction {
   @@index([userId])
 }
 
+enum DocumentStatus {
+  PENDING    // Initial state when document is created
+  PROCESSING // RAG service is processing the document
+  COMPLETED  // Successfully processed
+  FAILED     // Processing failed
+}
+
 model Document {
-  id            String    @id @default(uuid())
+  id            String         @id @default(uuid())
   name          String
   url           String
   type          String
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  status        DocumentStatus @default(PENDING)
+  error         String?        // To store error message if processing fails
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   workspaceId   String
-  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId])
   @@index([userId])
