@@ -91,11 +91,90 @@ export async function generateAIResponse(
     const data: AIResponse = await response.json();
     
     return {
-      content: data.response,
+      content: data.content,
       messageId: 'ai-' + Date.now(),
     };
   } catch (error) {
     console.error("Error generating AI response:", error);
+    return null;
+  }
+}
+
+export async function generateKnowledgeBaseResponse(
+  workspaceId: string,
+  query: string,
+): Promise<AIResponse | null> {
+  try {
+    const url = `${process.env.RAG_SERVICE_URL}/knowledge-base/generate`;
+    console.log("[RAG] Request details:", { 
+      url,
+      workspaceId, 
+      query,
+      RAG_SERVICE_URL: process.env.RAG_SERVICE_URL 
+    });
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.RAG_SERVICE_API_KEY}`
+      },
+      body: JSON.stringify({
+        query,
+        workspaceId,
+        limit: 5
+      }),
+    });
+
+    console.log("[RAG] Response headers:", {
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries())
+    });
+
+    if (!response.ok) {
+      console.error("[RAG] Response not OK:", {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+      throw new Error(`AI response error: ${response.statusText}`);
+    }
+
+    const rawData = await response.text();
+    console.log("[RAG] Raw response text:", rawData);
+
+    let data;
+    try {
+      data = JSON.parse(rawData);
+      console.log("[RAG] Parsed response data:", data);
+    } catch (parseError) {
+      console.error("[RAG] Failed to parse response as JSON:", parseError);
+      throw parseError;
+    }
+
+    console.log("[RAG] Extracted fields:", {
+      hasResponse: !!data.response,
+      responseType: typeof data.response,
+      response: data.response,
+      hasSourceMessages: !!data.sourceMessages,
+      sourceMessagesLength: data.sourceMessages?.length
+    });
+    
+    const result = {
+      content: data.response,
+      messageId: 'ai-' + Date.now(),
+      sourceMessages: data.sourceMessages || []
+    };
+
+    console.log("[RAG] Final result:", result);
+    return result;
+  } catch (error: unknown) {
+    console.error("[RAG] Error in generateKnowledgeBaseResponse:", {
+      error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return null;
   }
 }

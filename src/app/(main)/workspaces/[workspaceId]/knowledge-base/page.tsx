@@ -2,7 +2,12 @@ import { auth } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 
 import { db } from "@/lib/db";
-import { KnowledgeBase } from "@/components/knowledge-base/knowledge-base";
+import { Document, User } from "@/types";
+import { KnowledgeBaseClient } from "@/components/knowledge-base/knowledge-base-client";
+
+type DocumentWithUser = Document & {
+  user: User;
+};
 
 export default async function KnowledgeBasePage({
   params
@@ -17,8 +22,8 @@ export default async function KnowledgeBasePage({
 
   const documents = await db.document.findMany({
     where: {
+      workspaceId: params.workspaceId,
       workspace: {
-        id: params.workspaceId,
         members: {
           some: {
             user: {
@@ -34,11 +39,11 @@ export default async function KnowledgeBasePage({
     orderBy: {
       createdAt: "desc"
     }
-  });
+  }) as DocumentWithUser[];
 
   return (
-    <KnowledgeBase
-      documents={documents}
+    <KnowledgeBaseClient
+      initialDocuments={documents}
       workspaceId={params.workspaceId}
     />
   );

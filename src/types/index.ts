@@ -135,9 +135,13 @@ export interface SearchResult {
 }
 
 export interface AIResponse {
-  response: string;
-  confidence: number;
-  sourceMessages: SearchResult[];
+  content: string;
+  messageId: string;
+  sourceMessages: Array<{
+    content: string;
+    documentId?: string;
+    documentName?: string;
+  }>;
 }
 
 export enum DocumentStatus {
